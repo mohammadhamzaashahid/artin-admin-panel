@@ -40,7 +40,7 @@ export default function AdminDashboardPage() {
         />
       </div>
 
-      <div className="mt-5 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+      {/* <div className="mt-5 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
         <Card className="rounded-3xl border-0 shadow-sm">
           <CardHeader>
             <CardTitle className="text-base">Recommended admin flow</CardTitle>
@@ -83,7 +83,7 @@ export default function AdminDashboardPage() {
             the returned media asset ID to a course or lecture.
           </CardContent>
         </Card>
-      </div>
+      </div> */}
     </div>
   );
 }

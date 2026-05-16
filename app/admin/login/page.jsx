@@ -55,19 +55,19 @@ export default function AdminLoginPage() {
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl items-center justify-center">
         <div className="grid w-full items-center gap-8 lg:grid-cols-[1.1fr_0.9fr]">
           <section className="hidden lg:block">
-            <div className="rounded-[2rem] border bg-white p-10 shadow-sm">
+            <div className="rounded-[2rem] border bg-white p-12 shadow-sm">
               <div className="mb-10 inline-flex rounded-full border bg-neutral-50 px-4 py-2 text-sm text-muted-foreground">
                 Artin Institute Admin
               </div>
 
               <h1 className="max-w-xl text-5xl font-semibold tracking-tight text-neutral-950">
-                Manage courses, lectures, media and pricing from one clean panel.
+                Manage courses, lectures, media and pricing for the application
               </h1>
 
-              <p className="mt-5 max-w-lg text-base leading-7 text-muted-foreground">
+              {/* <p className="mt-5 max-w-lg text-base leading-7 text-muted-foreground">
                 A minimal, secure and responsive dashboard for handling your full
                 course platform operations.
-              </p>
+              </p> */}
 
               <div className="mt-10 grid max-w-lg grid-cols-3 gap-3">
                 {["Courses", "Lectures", "Media"].map((item) => (
@@ -77,7 +77,7 @@ export default function AdminLoginPage() {
                   >
                     <p className="text-sm font-medium">{item}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Admin CRUD
+                      Admin
                     </p>
                   </div>
                 ))}
