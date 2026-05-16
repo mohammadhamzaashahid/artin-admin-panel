@@ -91,7 +91,7 @@ export default function MediaUploadBox({
   };
 
   return (
-    <div className="rounded-2xl border bg-white p-4">
+    <div className="min-w-0 rounded-2xl border bg-white p-4">
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-100">
           <Icon className="h-5 w-5 text-neutral-700" />
@@ -107,7 +107,7 @@ export default function MediaUploadBox({
 
       <div className="mt-4">
         {!file ? (
-          <label className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed bg-neutral-50 px-4 py-6 text-center transition hover:bg-neutral-100">
+          <label className="flex min-h-40 min-w-0 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed bg-neutral-50 px-4 py-6 text-center transition hover:bg-neutral-100">
             <UploadCloud className="h-7 w-7 text-muted-foreground" />
 
             <p className="mt-3 text-sm font-medium">Choose file</p>
@@ -128,7 +128,7 @@ export default function MediaUploadBox({
             />
           </label>
         ) : (
-          <div className="rounded-2xl border bg-neutral-50 p-4">
+          <div className="min-w-0 rounded-2xl border bg-neutral-50 p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">{file.name}</p>

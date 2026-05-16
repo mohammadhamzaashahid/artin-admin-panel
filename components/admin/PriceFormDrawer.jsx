@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { Loader2 } from "lucide-react";
 
 import {
@@ -23,7 +23,7 @@ export default function PriceFormDrawer({
   onSubmit,
   submitting = false,
 }) {
-  const { register, handleSubmit, reset, watch } = useForm({
+  const { register, handleSubmit, reset, control } = useForm({
     defaultValues: {
       priceType: "SUBSCRIPTION",
       amount: "",
@@ -33,7 +33,7 @@ export default function PriceFormDrawer({
     },
   });
 
-  const priceType = watch("priceType");
+  const priceType = useWatch({ control, name: "priceType" });
 
   useEffect(() => {
     if (open) {

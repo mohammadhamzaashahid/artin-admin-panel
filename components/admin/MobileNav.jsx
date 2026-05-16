@@ -10,6 +10,7 @@ import {
   Layers3,
   Menu,
   Tags,
+  FileAudio,
   Users,
 } from "lucide-react";
 import {
@@ -25,9 +26,14 @@ const navItems = [
   { label: "Dashboard", href: "/admin", icon: Home },
   { label: "Courses", href: "/admin/courses", icon: BookOpen },
   { label: "Categories", href: "/admin/categories", icon: FolderTree },
+  {
+    label: "Lectures",
+    href: "/admin/lectures",
+    icon: FileAudio,
+  },
   { label: "Tags", href: "/admin/tags", icon: Tags },
   { label: "Media Library", href: "/admin/media", icon: ImageIcon },
-  { label: "Users", href: "/admin/users", icon: Users },
+//   { label: "Users", href: "/admin/users", icon: Users },
 ];
 
 export default function MobileNav() {

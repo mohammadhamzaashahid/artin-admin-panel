@@ -45,11 +45,11 @@ const navItems = [
     href: "/admin/media",
     icon: ImageIcon,
   },
-  {
-    label: "Users",
-    href: "/admin/users",
-    icon: Users,
-  },
+  // {
+  //   label: "Users",
+  //   href: "/admin/users",
+  //   icon: Users,
+  // },
 ];
 
 export default function AdminSidebar() {

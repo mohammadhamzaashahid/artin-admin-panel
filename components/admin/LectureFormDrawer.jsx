@@ -1,17 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useEffect } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import {
   CheckCircle2,
   FileAudio,
   FileVideo,
-  Hash,
   Loader2,
   Lock,
   PlayCircle,
   Save,
-  UploadCloud,
   Unlock,
 } from "lucide-react";
 
@@ -43,14 +41,11 @@ export default function LectureFormDrawer({
   onSubmit,
   submitting = false,
 }) {
-  const [uploadedAudio, setUploadedAudio] = useState(null);
-  const [uploadedVideo, setUploadedVideo] = useState(null);
-
   const {
     register,
     handleSubmit,
     reset,
-    watch,
+    control,
     setValue,
     formState: { errors },
   } = useForm({
@@ -66,11 +61,11 @@ export default function LectureFormDrawer({
     },
   });
 
-  const status = watch("status");
-  const isPreviewFree = watch("isPreviewFree");
-  const durationSeconds = watch("durationSeconds");
-  const audioMediaAssetId = watch("audioMediaAssetId");
-  const videoMediaAssetId = watch("videoMediaAssetId");
+  const status = useWatch({ control, name: "status" });
+  const isPreviewFree = useWatch({ control, name: "isPreviewFree" });
+  const durationSeconds = useWatch({ control, name: "durationSeconds" });
+  const audioMediaAssetId = useWatch({ control, name: "audioMediaAssetId" });
+  const videoMediaAssetId = useWatch({ control, name: "videoMediaAssetId" });
 
   const hasAudio = Boolean(audioMediaAssetId);
   const hasVideo = Boolean(videoMediaAssetId);
@@ -95,9 +90,6 @@ export default function LectureFormDrawer({
       videoMediaAssetId: videoId,
       durationSeconds: initialData?.durationSeconds || "",
     });
-
-    setUploadedAudio(initialData?.audioMediaAsset || null);
-    setUploadedVideo(initialData?.videoMediaAsset || null);
   }, [open, initialData, nextLectureOrder, reset]);
 
   const submitHandler = (values) => {
@@ -121,8 +113,6 @@ export default function LectureFormDrawer({
   };
 
   const handleAudioUploaded = (asset) => {
-    setUploadedAudio(asset);
-
     setValue("audioMediaAssetId", asset.id, {
       shouldDirty: true,
       shouldValidate: true,
@@ -137,8 +127,6 @@ export default function LectureFormDrawer({
   };
 
   const handleVideoUploaded = (asset) => {
-    setUploadedVideo(asset);
-
     setValue("videoMediaAssetId", asset.id, {
       shouldDirty: true,
       shouldValidate: true,
@@ -158,22 +146,20 @@ export default function LectureFormDrawer({
         side="right"
         className={cn(
           "flex h-dvh w-screen flex-col gap-0 overflow-hidden p-0 !max-w-none",
-          "sm:w-[94vw]",
-          "lg:w-[86vw]",
-          "xl:w-[1180px]",
-          "2xl:w-[1280px]",
+          "sm:w-[92vw]",
+          "lg:w-[760px]",
+          "xl:w-[920px]",
         )}
       >
-        <SheetHeader className="shrink-0 border-b bg-white px-5 py-5 text-left sm:px-7 lg:px-8">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <SheetHeader className="shrink-0 border-b bg-white px-4 py-4 text-left sm:px-6">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div className="min-w-0">
-              <SheetTitle className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              <SheetTitle className="text-xl font-semibold tracking-tight sm:text-2xl">
                 {mode === "edit" ? "Edit Lecture" : "Create Lecture"}
               </SheetTitle>
 
-              <SheetDescription className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                Add lecture details, upload audio or video to Cloudflare R2,
-                then save the lecture with the generated media asset ID.
+              <SheetDescription className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+                Add details and attach audio or video.
               </SheetDescription>
             </div>
 
@@ -204,87 +190,40 @@ export default function LectureFormDrawer({
           onSubmit={handleSubmit(submitHandler)}
           className="flex min-h-0 flex-1 flex-col"
         >
-          <div className="admin-scrollbar min-h-0 flex-1 overflow-y-auto bg-[#f7f7f5] px-5 py-5 sm:px-7 lg:px-8">
-            <div className="mx-auto max-w-7xl space-y-5">
+          <div className="admin-scrollbar min-h-0 flex-1 overflow-y-auto bg-[#f7f7f5] px-4 py-4 sm:px-6">
+            <div className="mx-auto max-w-5xl space-y-4">
               {existingLectures.length > 0 && (
-                <section className="rounded-[1.75rem] border bg-white p-5 shadow-sm">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <h3 className="text-base font-semibold">
-                        Existing Lectures in This Course
-                      </h3>
-
-                      <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                        Review the current lectures before adding or editing
-                        this lecture.
-                      </p>
-                    </div>
-
-                    <Badge
-                      variant="outline"
-                      className="w-fit rounded-full px-3 py-1.5"
-                    >
-                      Next order: #{nextLectureOrder}
-                    </Badge>
-                  </div>
-
-                  <div className="mt-4 grid gap-2">
-                    {existingLectures.map((lecture) => (
-                      <div
-                        key={lecture.id}
-                        className={cn(
-                          "flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-sm",
-                          initialData?.id === lecture.id
-                            ? "border-blue-200 bg-blue-50"
-                            : "bg-neutral-50",
-                        )}
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate font-medium">
-                            #{lecture.lectureOrder} — {lecture.title}
-                          </p>
-
-                          <p className="mt-0.5 text-xs text-muted-foreground">
-                            {lecture.status || "DRAFT"}
-                            {lecture.isPreviewFree ? " · Free preview" : ""}
-                          </p>
-                        </div>
-
-                        <div className="shrink-0 text-xs text-muted-foreground">
-                          {lecture.durationSeconds
-                            ? formatDuration(lecture.durationSeconds)
-                            : "No duration"}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </section>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span>{existingLectures.length} lectures in course</span>
+                  <span aria-hidden="true">·</span>
+                  <span>Next order #{nextLectureOrder}</span>
+                </div>
               )}
-              <section className="rounded-[1.75rem] border bg-white shadow-sm">
-                <div className="border-b px-5 py-5">
+
+              <section className="rounded-2xl border bg-white shadow-sm">
+                <div className="border-b px-4 py-4 sm:px-5">
                   <div className="flex items-start gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-neutral-100">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-100">
                       <PlayCircle className="h-5 w-5 text-neutral-700" />
                     </div>
 
                     <div>
-                      <h3 className="text-lg font-semibold">Lecture Details</h3>
-                      <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                        Enter the lecture information. Media can be uploaded in
-                        the next section.
+                      <h3 className="text-base font-semibold">Lecture Details</h3>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Title, order, status and access.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid gap-5 p-5 lg:grid-cols-12">
+                <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-12">
                   <div className="space-y-2 lg:col-span-8">
                     <Label>
                       Lecture Title <span className="text-destructive">*</span>
                     </Label>
 
                     <Input
-                      className="h-12 rounded-2xl bg-white text-base"
+                      className="h-11 rounded-xl bg-white text-base"
                       placeholder="Example: Introduction to the course"
                       disabled={submitting}
                       {...register("title", {
@@ -310,20 +249,18 @@ export default function LectureFormDrawer({
                     <Input
                       type="number"
                       min="1"
-                      className="h-12 rounded-2xl bg-white text-base"
+                      className="h-11 rounded-xl bg-white text-base"
                       disabled={submitting || mode === "create"}
                       {...register("lectureOrder")}
                     />
 
                     {mode === "create" ? (
                       <p className="text-xs text-muted-foreground">
-                        Order will be assigned automatically when the lecture is
-                        saved.
+                        Assigned automatically when saved.
                       </p>
                     ) : (
                       <p className="text-xs text-muted-foreground">
-                        Change carefully. Duplicate lecture orders are not
-                        allowed.
+                        Duplicate orders are not allowed.
                       </p>
                     )}
                   </div>
@@ -332,7 +269,7 @@ export default function LectureFormDrawer({
                     <Label>Description</Label>
 
                     <Textarea
-                      className="min-h-36 rounded-2xl bg-white text-base leading-7"
+                      className="min-h-28 rounded-xl bg-white text-base leading-7"
                       placeholder="Describe what this lecture covers..."
                       disabled={submitting}
                       {...register("description")}
@@ -343,7 +280,7 @@ export default function LectureFormDrawer({
                     <Label>Status</Label>
 
                     <select
-                      className="h-12 w-full rounded-2xl border bg-white px-4 text-sm outline-none transition focus:ring-2 focus:ring-ring"
+                      className="h-11 w-full rounded-xl border bg-white px-3 text-sm outline-none transition focus:ring-2 focus:ring-ring"
                       disabled={submitting}
                       {...register("status")}
                     >
@@ -359,7 +296,7 @@ export default function LectureFormDrawer({
                     <Input
                       type="number"
                       min="0"
-                      className="h-12 rounded-2xl bg-white text-base"
+                      className="h-11 rounded-xl bg-white text-base"
                       placeholder="Example: 300"
                       disabled={submitting}
                       {...register("durationSeconds")}
@@ -371,7 +308,7 @@ export default function LectureFormDrawer({
                       </p>
                     ) : (
                       <p className="text-xs text-muted-foreground">
-                        Optional. It can also come from uploaded media metadata.
+                        Optional; media metadata can fill this.
                       </p>
                     )}
                   </div>
@@ -379,7 +316,7 @@ export default function LectureFormDrawer({
                   <div className="space-y-2 lg:col-span-4">
                     <Label>Access</Label>
 
-                    <label className="flex h-12 cursor-pointer items-center gap-3 rounded-2xl border bg-neutral-50 px-4 text-sm transition hover:bg-neutral-100">
+                    <label className="flex h-11 cursor-pointer items-center gap-3 rounded-xl border bg-neutral-50 px-3 text-sm transition hover:bg-neutral-100">
                       <input
                         type="checkbox"
                         className="h-4 w-4"
@@ -404,18 +341,17 @@ export default function LectureFormDrawer({
                 </div>
               </section>
 
-              <section className="grid gap-5 xl:grid-cols-2">
+              <section className="grid gap-4 xl:grid-cols-2">
                 <MediaAssetSection
                   title="Audio Upload"
-                  description="Upload the lecture audio file. For audio-first courses this is usually required."
+                  description="Attach audio for this lecture."
                   icon={FileAudio}
                   assetId={audioMediaAssetId}
-                  uploadedAsset={uploadedAudio}
                 >
                   <MediaUploadBox
                     mediaKind="AUDIO"
                     label="Upload audio file"
-                    description="Supported formats include MP3, WAV and AAC."
+                    description="MP3, WAV or AAC."
                     requireDuration
                     onUploaded={handleAudioUploaded}
                     disabled={submitting}
@@ -424,49 +360,29 @@ export default function LectureFormDrawer({
 
                 <MediaAssetSection
                   title="Video Upload"
-                  description="Optional video file for this lecture when the lesson has video content."
+                  description="Attach video when needed."
                   icon={FileVideo}
                   assetId={videoMediaAssetId}
-                  uploadedAsset={uploadedVideo}
                 >
                   <MediaUploadBox
                     mediaKind="VIDEO"
                     label="Upload video file"
-                    description="Supported formats include MP4, WebM and MOV."
+                    description="MP4, WebM or MOV."
                     requireDuration
                     onUploaded={handleVideoUploaded}
                     disabled={submitting}
                   />
                 </MediaAssetSection>
               </section>
-
-              <section className="rounded-[1.75rem] border bg-white p-5 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-neutral-100">
-                    <UploadCloud className="h-5 w-5 text-neutral-700" />
-                  </div>
-
-                  <div>
-                    <p className="text-sm font-semibold">
-                      Upload and assignment flow
-                    </p>
-                    <p className="mt-1 max-w-4xl text-sm leading-6 text-muted-foreground">
-                      First upload the file. After upload, the media asset ID
-                      appears below the upload section. Then click Save Lecture
-                      to attach that asset to this lecture.
-                    </p>
-                  </div>
-                </div>
-              </section>
             </div>
           </div>
 
-          <div className="shrink-0 border-t bg-white px-5 py-4 sm:px-7 lg:px-8">
-            <div className="mx-auto flex max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+          <div className="shrink-0 border-t bg-white px-4 py-3 sm:px-6">
+            <div className="mx-auto flex max-w-5xl flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
               <Button
                 type="button"
                 variant="outline"
-                className="h-11 rounded-2xl px-7"
+                className="h-10 rounded-xl px-6"
                 disabled={submitting}
                 onClick={() => onOpenChange(false)}
               >
@@ -475,7 +391,7 @@ export default function LectureFormDrawer({
 
               <Button
                 type="submit"
-                className="h-11 rounded-2xl px-7"
+                className="h-10 rounded-xl px-6"
                 disabled={submitting}
               >
                 {submitting ? (
@@ -498,21 +414,20 @@ function MediaAssetSection({
   description,
   icon: Icon,
   assetId,
-  uploadedAsset,
   children,
 }) {
   return (
-    <section className="overflow-hidden rounded-[1.75rem] border bg-white shadow-sm">
-      <div className="border-b px-5 py-5">
-        <div className="flex items-start justify-between gap-4">
+    <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+      <div className="border-b px-4 py-4 sm:px-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 items-start gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-neutral-100">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-100">
               <Icon className="h-5 w-5 text-neutral-700" />
             </div>
 
             <div className="min-w-0">
-              <h3 className="text-lg font-semibold">{title}</h3>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              <h3 className="text-base font-semibold">{title}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
                 {description}
               </p>
             </div>
@@ -532,38 +447,17 @@ function MediaAssetSection({
         </div>
       </div>
 
-      <div className="space-y-5 p-5">
+      <div className="space-y-4 p-4 sm:p-5">
         {children}
 
-        <div className="rounded-2xl bg-neutral-50 p-4">
-          <div className="mb-3 flex items-center gap-2">
-            <Hash className="h-4 w-4 text-muted-foreground" />
-            <p className="text-sm font-medium">Attached Media Asset ID</p>
-          </div>
-
-          <p className="break-all rounded-xl border bg-white p-3 text-xs text-muted-foreground">
-            {assetId || "No media asset attached yet"}
-          </p>
-
-          {assetId && (
-            <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-green-50 px-3 py-1 text-xs text-green-700">
+        {assetId && (
+          <div className="rounded-xl bg-neutral-50 p-3 text-xs text-muted-foreground">
+            <div className="inline-flex items-center gap-2 rounded-full bg-green-50 px-3 py-1 text-green-700">
               <CheckCircle2 className="h-3.5 w-3.5" />
-              Ready to save with lecture
+              Attached to lecture
             </div>
-          )}
-
-          {uploadedAsset?.originalFileName && (
-            <p className="mt-3 text-xs text-muted-foreground">
-              File: {uploadedAsset.originalFileName}
-            </p>
-          )}
-
-          {uploadedAsset?.fileName && !uploadedAsset?.originalFileName && (
-            <p className="mt-3 text-xs text-muted-foreground">
-              File: {uploadedAsset.fileName}
-            </p>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </section>
   );

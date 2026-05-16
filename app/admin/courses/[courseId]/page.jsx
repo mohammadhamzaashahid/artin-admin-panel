@@ -8,7 +8,6 @@ import {
   ArrowLeft,
   CheckCircle2,
   Edit2,
-  FileAudio,
   ImageIcon,
   Plus,
   Rocket,
@@ -94,7 +93,7 @@ export default function AdminCourseDetailPage() {
 
   const course = courseQuery.data;
   const prices = pricesQuery.data || [];
-  const lectures = lecturesQuery.data || [];
+  const lectures = useMemo(() => lecturesQuery.data || [], [lecturesQuery.data]);
   const categories = categoriesQuery.data?.categories || [];
   const tags = tagsQuery.data?.tags || [];
 
@@ -180,35 +179,35 @@ export default function AdminCourseDetailPage() {
     setPriceDrawerOpen(false);
   };
 
-const handleLectureSubmit = async (payload) => {
-  try {
-    if (selectedLecture?.id) {
-      await updateLectureMutation.mutateAsync({
-        lectureId: selectedLecture.id,
-        courseId,
-        payload,
-      });
-    } else {
-      await createLectureMutation.mutateAsync({
-        courseId,
-        payload,
-      });
+  const handleLectureSubmit = async (payload) => {
+    try {
+      if (selectedLecture?.id) {
+        await updateLectureMutation.mutateAsync({
+          lectureId: selectedLecture.id,
+          courseId,
+          payload,
+        });
+      } else {
+        await createLectureMutation.mutateAsync({
+          courseId,
+          payload,
+        });
+      }
+
+      await lecturesQuery.refetch();
+
+      setSelectedLecture(null);
+      setLectureDrawerOpen(false);
+    } catch (error) {
+      console.error("Lecture save failed:", error);
+
+      alert(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Failed to save lecture"
+      );
     }
-
-    await lecturesQuery.refetch();
-
-    setSelectedLecture(null);
-    setLectureDrawerOpen(false);
-  } catch (error) {
-    console.error("Lecture save failed:", error);
-
-    alert(
-      error?.response?.data?.message ||
-        error?.message ||
-        "Failed to save lecture"
-    );
-  }
-};
+  };
 
   const handleReorderNormalize = async () => {
     if (sortedLectures.length === 0) return;
@@ -263,20 +262,20 @@ const handleLectureSubmit = async (payload) => {
 
       <PageHeader
         title={course.title}
-        description="Complete this setup flow: media, pricing, lectures, then publish."
+        description={course.subtitle || course.shortDescription || "Course setup"}
         action={
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="grid grid-cols-2 gap-2 sm:flex">
             <Button
               variant="outline"
-              className="h-11 rounded-xl bg-white"
+              className="h-10 rounded-xl bg-white"
               onClick={() => setCourseDrawerOpen(true)}
             >
               <Edit2 className="mr-2 h-4 w-4" />
-              Edit Details
+              Edit
             </Button>
 
             <Button
-              className="h-11 rounded-xl"
+              className="h-10 rounded-xl"
               disabled={publishCourseMutation.isPending}
               onClick={handlePublish}
             >
@@ -287,10 +286,17 @@ const handleLectureSubmit = async (payload) => {
         }
       />
 
+      <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground">
+        <StatusBadge value={course.status || "DRAFT"} />
+        <span>{course.category?.name || course.categoryName || "No category"}</span>
+        <span className="hidden sm:inline" aria-hidden="true">·</span>
+        <span className="hidden sm:inline">{formatDateTime(course.createdAt)}</span>
+      </div>
+
       {!canPublish && (
-        <Card className="mb-5 rounded-3xl border-amber-200 bg-amber-50 shadow-sm">
-          <CardContent className="p-5">
-            <p className="font-semibold text-amber-900">Course setup is not complete yet</p>
+        <Card className="mb-4 rounded-2xl border-amber-200 bg-amber-50 shadow-sm">
+          <CardContent className="p-4">
+            <p className="text-sm font-semibold text-amber-900">Missing before publish</p>
             <div className="mt-3 grid gap-2 text-sm text-amber-900 sm:grid-cols-2 lg:grid-cols-4">
               <SetupItem done={hasBanner} label="Banner image" />
               <SetupItem done={hasThumbnail} label="Thumbnail image" />
@@ -301,92 +307,59 @@ const handleLectureSubmit = async (payload) => {
         </Card>
       )}
 
-      <div className="mb-5 grid gap-4 md:grid-cols-3">
-        <Card className="rounded-3xl border-0 shadow-sm">
-          <CardContent className="p-5">
-            <p className="text-sm text-muted-foreground">Status</p>
-            <div className="mt-2">
-              <StatusBadge value={course.status || "DRAFT"} />
-            </div>
-          </CardContent>
-        </Card>
+      <Tabs defaultValue="media" className="flex min-w-0 flex-col gap-4">
+        <div className="-mx-1 overflow-x-auto px-1 pb-1">
+          <TabsList className="flex !h-10 w-max min-w-full justify-start rounded-2xl bg-white p-1 shadow-sm sm:min-w-0">
+            <TabsTrigger className="h-8 !flex-none rounded-xl px-4" value="media">
+              Media
+            </TabsTrigger>
+            <TabsTrigger className="h-8 !flex-none rounded-xl px-4" value="pricing">
+              Pricing
+            </TabsTrigger>
+            <TabsTrigger className="h-8 !flex-none rounded-xl px-4" value="lectures">
+              Lectures
+            </TabsTrigger>
+            <TabsTrigger className="h-8 !flex-none rounded-xl px-4" value="overview">
+              Overview
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-        <Card className="rounded-3xl border-0 shadow-sm">
-          <CardContent className="p-5">
-            <p className="text-sm text-muted-foreground">Category</p>
-            <p className="mt-2 font-semibold">
-              {course.category?.name || course.categoryName || "-"}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-3xl border-0 shadow-sm">
-          <CardContent className="p-5">
-            <p className="text-sm text-muted-foreground">Created</p>
-            <p className="mt-2 font-semibold">
-              {formatDateTime(course.createdAt)}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Tabs defaultValue="media" className="space-y-5">
-        <TabsList className="grid h-auto w-full grid-cols-2 rounded-2xl bg-white p-1 shadow-sm md:w-auto md:inline-grid md:grid-cols-4">
-          <TabsTrigger className="rounded-xl" value="media">
-            1. Media
-          </TabsTrigger>
-          <TabsTrigger className="rounded-xl" value="pricing">
-            2. Pricing
-          </TabsTrigger>
-          <TabsTrigger className="rounded-xl" value="lectures">
-            3. Lectures
-          </TabsTrigger>
-          <TabsTrigger className="rounded-xl" value="overview">
-            Overview
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="media">
-          <div className="grid gap-4 xl:grid-cols-2">
+        <TabsContent value="media" className="min-w-0">
+          <div className="grid min-w-0 gap-4 xl:grid-cols-2">
             <MediaUploadBox
               mediaKind="IMAGE"
               label="Upload course banner"
-              description="Step 1: upload the banner image. It will be sent directly to R2 and attached to this course."
+              description="Upload and attach the banner image."
               onUploaded={(asset) => handleAttachImage(asset, "banner")}
             />
 
             <MediaUploadBox
               mediaKind="IMAGE"
               label="Upload course thumbnail"
-              description="Step 2: upload the thumbnail image. It will be sent directly to R2 and attached to this course."
+              description="Upload and attach the thumbnail image."
               onUploaded={(asset) => handleAttachImage(asset, "thumbnail")}
             />
           </div>
 
-          <div className="mt-4 grid gap-4 xl:grid-cols-2">
-            <AssetCard
-              title="Current Banner Asset"
-              value={course.bannerImageAssetId || course.bannerImageAsset?.id}
-            />
-            <AssetCard
-              title="Current Thumbnail Asset"
-              value={course.thumbnailImageAssetId || course.thumbnailImageAsset?.id}
-            />
+          <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2">
+            <AssetStatus label="Banner" done={hasBanner} />
+            <AssetStatus label="Thumbnail" done={hasThumbnail} />
           </div>
         </TabsContent>
 
-        <TabsContent value="pricing">
-          <Card className="overflow-hidden rounded-3xl border-0 shadow-sm">
+        <TabsContent value="pricing" className="min-w-0">
+          <Card className="w-full overflow-hidden rounded-2xl border-0 shadow-sm">
             <div className="flex flex-col gap-3 border-b bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="font-semibold">Course Prices</p>
                 <p className="text-sm text-muted-foreground">
-                  Step 3: add at least one subscription or one-time price.
+                  Add at least one subscription or one-time price.
                 </p>
               </div>
 
               <Button
-                className="h-10 rounded-xl"
+                className="h-10 w-full rounded-xl sm:w-auto"
                 onClick={() => {
                   setSelectedPrice(null);
                   setPriceDrawerOpen(true);
@@ -405,97 +378,147 @@ const handleLectureSubmit = async (payload) => {
                   No prices created yet. Add a price before publishing.
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-neutral-50">
-                        <TableHead className="px-5">Type</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Interval</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-
-                    <TableBody>
-                      {prices.map((price) => (
-                        <TableRow key={price.id}>
-                          <TableCell className="px-5 font-medium">
-                            {price.priceType}
-                          </TableCell>
-                          <TableCell>
-                            {price.currency} {price.amount}
-                          </TableCell>
-                          <TableCell>{price.billingInterval || "-"}</TableCell>
-                          <TableCell>
-                            <StatusBadge
-                              value={price.isActive ? "ACTIVE" : "INACTIVE"}
-                            />
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="rounded-xl"
-                              onClick={() => {
-                                setSelectedPrice(price);
-                                setPriceDrawerOpen(true);
-                              }}
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
-
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="rounded-xl text-destructive"
-                              onClick={() => setPriceToDeactivate(price)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
+                <>
+                  <div className="hidden overflow-x-auto md:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-neutral-50">
+                          <TableHead className="px-5">Type</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Interval</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                      </TableHeader>
+
+                      <TableBody>
+                        {prices.map((price) => (
+                          <TableRow key={price.id}>
+                            <TableCell className="px-5 font-medium">
+                              {price.priceType}
+                            </TableCell>
+                            <TableCell>
+                              {price.currency} {price.amount}
+                            </TableCell>
+                            <TableCell>{price.billingInterval || "-"}</TableCell>
+                            <TableCell>
+                              <StatusBadge
+                                value={price.isActive ? "ACTIVE" : "INACTIVE"}
+                              />
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="rounded-xl"
+                                onClick={() => {
+                                  setSelectedPrice(price);
+                                  setPriceDrawerOpen(true);
+                                }}
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="rounded-xl text-destructive"
+                                onClick={() => setPriceToDeactivate(price)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  <div className="space-y-3 p-3 sm:p-4 md:hidden">
+                    {prices.map((price) => (
+                      <div
+                        key={price.id}
+                        className="rounded-2xl border bg-white p-3.5"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold">
+                              {price.priceType}
+                            </p>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {price.currency} {price.amount}
+                              {price.billingInterval
+                                ? ` / ${price.billingInterval.toLowerCase()}`
+                                : ""}
+                            </p>
+                          </div>
+
+                          <StatusBadge
+                            value={price.isActive ? "ACTIVE" : "INACTIVE"}
+                          />
+                        </div>
+
+                        <div className="mt-4 grid grid-cols-2 gap-2">
+                          <Button
+                            variant="outline"
+                            className="h-9 rounded-xl px-2"
+                            onClick={() => {
+                              setSelectedPrice(price);
+                              setPriceDrawerOpen(true);
+                            }}
+                          >
+                            Edit
+                          </Button>
+
+                          <Button
+                            variant="outline"
+                            className="h-9 rounded-xl px-2 text-destructive"
+                            onClick={() => setPriceToDeactivate(price)}
+                          >
+                            Deactivate
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="lectures">
-          <Card className="overflow-hidden rounded-3xl border-0 shadow-sm">
+        <TabsContent value="lectures" className="min-w-0">
+          <Card className="w-full overflow-hidden rounded-2xl border-0 shadow-sm">
             <div className="flex flex-col gap-3 border-b bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="font-semibold">Course Lectures</p>
                 <p className="text-sm text-muted-foreground">
-                  Step 4: create lectures. Inside each lecture, upload audio/video and save.
+                  Create lectures and attach audio or video.
                 </p>
               </div>
 
-              <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="grid grid-cols-2 gap-2 sm:flex">
                 <Button
                   variant="outline"
-                  className="h-10 rounded-xl bg-white"
+                  className="h-10 min-w-0 rounded-xl bg-white px-3"
                   disabled={
                     reorderLecturesMutation.isPending ||
                     sortedLectures.length === 0
                   }
                   onClick={handleReorderNormalize}
                 >
-                  Normalize Order
+                  Normalize
                 </Button>
 
                 <Button
-                  className="h-10 rounded-xl"
+                  className="h-10 min-w-0 rounded-xl px-3"
                   onClick={() => {
                     setSelectedLecture(null);
                     setLectureDrawerOpen(true);
                   }}
                 >
                   <Plus className="mr-2 h-4 w-4" />
-                  New Lecture
+                  <span className="truncate">New Lecture</span>
                 </Button>
               </div>
             </div>
@@ -505,7 +528,7 @@ const handleLectureSubmit = async (payload) => {
                 <LoadingState label="Loading lectures..." />
               ) : sortedLectures.length === 0 ? (
                 <div className="p-5 text-sm text-muted-foreground">
-                  No lectures created yet. Create a lecture and upload its audio/video in the drawer.
+                  No lectures created yet.
                 </div>
               ) : (
                 <>
@@ -585,62 +608,68 @@ const handleLectureSubmit = async (payload) => {
                     </Table>
                   </div>
 
-                  <div className="space-y-3 p-4 lg:hidden">
-                    {sortedLectures.map((lecture) => (
-                      <div
-                        key={lecture.id}
-                        className="rounded-2xl border bg-white p-4"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-xs text-muted-foreground">
-                              Lecture {lecture.lectureOrder}
-                            </p>
-                            <p className="mt-1 line-clamp-2 text-sm font-semibold">
-                              {lecture.title}
-                            </p>
+                  <div className="space-y-3 p-3 sm:p-4 lg:hidden">
+                    {sortedLectures.map((lecture) => {
+                      const hasMedia =
+                        lecture.audioMediaAssetId ||
+                        lecture.audioMediaAsset?.id ||
+                        lecture.videoMediaAssetId ||
+                        lecture.videoMediaAsset?.id;
+
+                      return (
+                        <div
+                          key={lecture.id}
+                          className="rounded-2xl border bg-white p-3.5"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-xs text-muted-foreground">
+                                Lecture {lecture.lectureOrder}
+                              </p>
+                              <p className="mt-1 line-clamp-2 text-sm font-semibold">
+                                {lecture.title}
+                              </p>
+                            </div>
+                            <StatusBadge value={lecture.status || "DRAFT"} />
                           </div>
-                          <StatusBadge value={lecture.status || "DRAFT"} />
-                        </div>
 
-                        <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
-                          <div className="rounded-xl bg-neutral-50 p-3">
-                            <p className="text-muted-foreground">Duration</p>
-                            <p className="mt-1 font-medium">
-                              {formatDuration(lecture.durationSeconds)}
-                            </p>
+                          <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                            <span>{formatDuration(lecture.durationSeconds)}</span>
+                            <span>
+                              {lecture.isPreviewFree ? "Free preview" : "Locked"}
+                            </span>
+                            <span
+                              className={
+                                hasMedia ? "text-green-700" : "text-destructive"
+                              }
+                            >
+                              {hasMedia ? "Media attached" : "Media missing"}
+                            </span>
                           </div>
 
-                          <div className="rounded-xl bg-neutral-50 p-3">
-                            <p className="text-muted-foreground">Access</p>
-                            <p className="mt-1 font-medium">
-                              {lecture.isPreviewFree ? "Free" : "Locked"}
-                            </p>
+                          <div className="mt-4 grid grid-cols-2 gap-2">
+                            <Button
+                              variant="outline"
+                              className="h-9 rounded-xl px-2"
+                              onClick={() => {
+                                setSelectedLecture(lecture);
+                                setLectureDrawerOpen(true);
+                              }}
+                            >
+                              Edit / Upload
+                            </Button>
+
+                            <Button
+                              variant="outline"
+                              className="h-9 rounded-xl px-2 text-destructive"
+                              onClick={() => setLectureToArchive(lecture)}
+                            >
+                              Archive
+                            </Button>
                           </div>
                         </div>
-
-                        <div className="mt-4 grid grid-cols-2 gap-2">
-                          <Button
-                            variant="outline"
-                            className="rounded-xl"
-                            onClick={() => {
-                              setSelectedLecture(lecture);
-                              setLectureDrawerOpen(true);
-                            }}
-                          >
-                            Edit / Upload
-                          </Button>
-
-                          <Button
-                            variant="outline"
-                            className="rounded-xl text-destructive"
-                            onClick={() => setLectureToArchive(lecture)}
-                          >
-                            Archive
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </>
               )}
@@ -648,8 +677,8 @@ const handleLectureSubmit = async (payload) => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="overview">
-          <Card className="rounded-3xl border-0 shadow-sm">
+        <TabsContent value="overview" className="min-w-0">
+          <Card className="w-full rounded-2xl border-0 shadow-sm">
             <CardHeader>
               <CardTitle className="text-base">Course Information</CardTitle>
             </CardHeader>
@@ -695,19 +724,19 @@ const handleLectureSubmit = async (payload) => {
         onSubmit={handlePriceSubmit}
       />
 
-     <LectureFormDrawer
-  open={lectureDrawerOpen}
-  onOpenChange={(open) => {
-    setLectureDrawerOpen(open);
-    if (!open) setSelectedLecture(null);
-  }}
-  mode={selectedLecture ? "edit" : "create"}
-  initialData={selectedLecture}
-  nextLectureOrder={nextLectureOrder}
-  existingLectures={sortedLectures}
-  submitting={createLectureMutation.isPending || updateLectureMutation.isPending}
-  onSubmit={handleLectureSubmit}
-/>
+      <LectureFormDrawer
+        open={lectureDrawerOpen}
+        onOpenChange={(open) => {
+          setLectureDrawerOpen(open);
+          if (!open) setSelectedLecture(null);
+        }}
+        mode={selectedLecture ? "edit" : "create"}
+        initialData={selectedLecture}
+        nextLectureOrder={nextLectureOrder}
+        existingLectures={sortedLectures}
+        submitting={createLectureMutation.isPending || updateLectureMutation.isPending}
+        onSubmit={handleLectureSubmit}
+      />
 
       <ConfirmDialog
         open={Boolean(lectureToArchive)}
@@ -738,7 +767,7 @@ const handleLectureSubmit = async (payload) => {
 
 function SetupItem({ done, label }) {
   return (
-    <div className="flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2">
+    <div className="flex items-center gap-2 rounded-xl bg-white/70 px-3 py-2">
       <CheckCircle2
         className={done ? "h-4 w-4 text-green-700" : "h-4 w-4 text-amber-700"}
       />
@@ -747,20 +776,16 @@ function SetupItem({ done, label }) {
   );
 }
 
-function AssetCard({ title, value }) {
+function AssetStatus({ label, done }) {
   return (
-    <Card className="rounded-3xl border-0 shadow-sm">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <ImageIcon className="h-4 w-4" />
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="break-all rounded-2xl bg-neutral-50 p-4 text-xs text-muted-foreground">
-          {value || "Not attached yet"}
-        </p>
-      </CardContent>
-    </Card>
+    <div className="flex items-center justify-between rounded-2xl border bg-white px-4 py-3 text-sm shadow-sm">
+      <span className="flex items-center gap-2 font-medium">
+        <ImageIcon className="h-4 w-4 text-muted-foreground" />
+        {label}
+      </span>
+      <span className={done ? "text-green-700" : "text-muted-foreground"}>
+        {done ? "Attached" : "Not attached"}
+      </span>
+    </div>
   );
 }

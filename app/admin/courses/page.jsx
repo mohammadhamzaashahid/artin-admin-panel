@@ -127,7 +127,7 @@ export default function AdminCoursesPage() {
     <div>
       <PageHeader
         title="Courses"
-        description="Create a course first. After creation, you will be taken to its setup page where you can upload media, add pricing, add lectures and publish."
+        description="Create and manage course setup, media, pricing and lectures."
         action={
           <Button onClick={openCreateDrawer} className="h-11 rounded-xl">
             <Plus className="mr-2 h-4 w-4" />
@@ -136,8 +136,8 @@ export default function AdminCoursesPage() {
         }
       />
 
-      <Card className="overflow-hidden rounded-3xl border-0 shadow-sm">
-        <div className="border-b bg-white p-4">
+      <Card className="overflow-hidden rounded-2xl border-0 shadow-sm">
+        <div className="border-b bg-white p-3 sm:p-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="relative w-full md:max-w-md">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -269,11 +269,11 @@ export default function AdminCoursesPage() {
                 </Table>
               </div>
 
-              <div className="space-y-3 p-4 lg:hidden">
+              <div className="space-y-3 p-3 sm:p-4 lg:hidden">
                 {courses.map((course) => (
                   <div
                     key={course.id}
-                    className="rounded-2xl border bg-white p-4"
+                    className="rounded-2xl border bg-white p-3.5"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -288,30 +288,20 @@ export default function AdminCoursesPage() {
                       <StatusBadge value={course.status || "DRAFT"} />
                     </div>
 
-                    <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
-                      <div className="rounded-xl bg-neutral-50 p-3">
-                        <p className="text-muted-foreground">Category</p>
-                        <p className="mt-1 font-medium">
-                          {course.category?.name || course.categoryName || "-"}
-                        </p>
-                      </div>
-
-                      <div className="rounded-xl bg-neutral-50 p-3">
-                        <p className="text-muted-foreground">Created</p>
-                        <p className="mt-1 font-medium">
-                          {formatDateTime(course.createdAt)}
-                        </p>
-                      </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      <span>{course.category?.name || course.categoryName || "No category"}</span>
+                      <span aria-hidden="true">·</span>
+                      <span>{formatDateTime(course.createdAt)}</span>
                     </div>
 
                     <div className="mt-4 grid grid-cols-3 gap-2">
-                      <Button asChild variant="outline" className="rounded-xl">
+                      <Button asChild variant="outline" className="h-9 rounded-xl px-2">
                         <Link href={`/admin/courses/${course.id}`}>Setup</Link>
                       </Button>
 
                       <Button
                         variant="outline"
-                        className="rounded-xl"
+                        className="h-9 rounded-xl px-2"
                         onClick={() => openEditDrawer(course)}
                       >
                         Edit
@@ -319,7 +309,7 @@ export default function AdminCoursesPage() {
 
                       <Button
                         variant="outline"
-                        className="rounded-xl text-destructive"
+                        className="h-9 rounded-xl px-2 text-destructive"
                         onClick={() => setCourseToArchive(course)}
                       >
                         Archive

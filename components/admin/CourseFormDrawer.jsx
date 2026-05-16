@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { Loader2 } from "lucide-react";
 
 import {
@@ -30,7 +30,7 @@ export default function CourseFormDrawer({
     register,
     handleSubmit,
     reset,
-    watch,
+    control,
     formState: { errors },
   } = useForm({
     defaultValues: {
@@ -43,7 +43,7 @@ export default function CourseFormDrawer({
     },
   });
 
-  const selectedTagIds = watch("tagIds") || [];
+  const selectedTagIds = useWatch({ control, name: "tagIds" }) || [];
 
   useEffect(() => {
     if (open) {
