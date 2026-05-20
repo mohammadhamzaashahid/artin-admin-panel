@@ -21,6 +21,8 @@ import StatusBadge from "@/components/common/StatusBadge";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
 import CourseFormDrawer from "@/components/admin/CourseFormDrawer";
 import MediaUploadBox from "@/components/admin/MediaUploadBox";
+import MediaAssetPreview from "@/components/admin/MediaAssetPreview";
+import MediaAssetPicker from "@/components/admin/MediaAssetPicker";
 import PriceFormDrawer from "@/components/admin/PriceFormDrawer";
 import LectureFormDrawer from "@/components/admin/LectureFormDrawer";
 
@@ -59,6 +61,7 @@ import {
   useReorderLectures,
   useUpdateLecture,
 } from "@/lib/hooks/useLectures";
+import { useDeleteMedia } from "@/lib/hooks/useMedia";
 import { formatDateTime, formatDuration } from "@/lib/utils";
 
 export default function AdminCourseDetailPage() {
@@ -72,6 +75,8 @@ export default function AdminCourseDetailPage() {
   const [selectedLecture, setSelectedLecture] = useState(null);
   const [lectureToArchive, setLectureToArchive] = useState(null);
   const [priceToDeactivate, setPriceToDeactivate] = useState(null);
+  const [mediaToDelete, setMediaToDelete] = useState(null);
+  const [courseMediaPicker, setCourseMediaPicker] = useState(null);
 
   const courseQuery = useCourse(courseId);
   const pricesQuery = useCoursePrices(courseId);
@@ -90,6 +95,7 @@ export default function AdminCourseDetailPage() {
   const updateLectureMutation = useUpdateLecture();
   const archiveLectureMutation = useArchiveLecture();
   const reorderLecturesMutation = useReorderLectures();
+  const deleteMediaMutation = useDeleteMedia();
 
   const course = courseQuery.data;
   const prices = pricesQuery.data || [];
@@ -159,6 +165,13 @@ export default function AdminCourseDetailPage() {
       courseId,
       payload,
     });
+  };
+
+  const handleSelectExistingCourseImage = async (asset) => {
+    if (!courseMediaPicker?.target || !asset?.id) return;
+
+    await handleAttachImage(asset, courseMediaPicker.target);
+    setCourseMediaPicker(null);
   };
 
   const handlePriceSubmit = async (payload) => {
@@ -243,6 +256,15 @@ export default function AdminCourseDetailPage() {
     });
 
     setPriceToDeactivate(null);
+  };
+
+  const handleDeleteAttachedMedia = async () => {
+    if (!mediaToDelete?.asset?.id) return;
+
+    await deleteMediaMutation.mutateAsync(mediaToDelete.asset.id);
+    await courseQuery.refetch();
+    await lecturesQuery.refetch();
+    setMediaToDelete(null);
   };
 
   const handlePublish = async () => {
@@ -343,8 +365,34 @@ export default function AdminCourseDetailPage() {
           </div>
 
           <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2">
-            <AssetStatus label="Banner" done={hasBanner} />
-            <AssetStatus label="Thumbnail" done={hasThumbnail} />
+            <CourseMediaPanel
+              label="Banner"
+              asset={course.bannerImageAsset}
+              fallbackAssetId={course.bannerImageAssetId}
+              onSelectExisting={() =>
+                setCourseMediaPicker({
+                  target: "banner",
+                  label: "course banner",
+                  selectedAssetId:
+                    course.bannerImageAsset?.id || course.bannerImageAssetId,
+                })
+              }
+              onDelete={(asset) => setMediaToDelete({ label: "banner image", asset })}
+            />
+            <CourseMediaPanel
+              label="Thumbnail"
+              asset={course.thumbnailImageAsset}
+              fallbackAssetId={course.thumbnailImageAssetId}
+              onSelectExisting={() =>
+                setCourseMediaPicker({
+                  target: "thumbnail",
+                  label: "course thumbnail",
+                  selectedAssetId:
+                    course.thumbnailImageAsset?.id || course.thumbnailImageAssetId,
+                })
+              }
+              onDelete={(asset) => setMediaToDelete({ label: "thumbnail image", asset })}
+            />
           </div>
         </TabsContent>
 
@@ -736,6 +784,10 @@ export default function AdminCourseDetailPage() {
         existingLectures={sortedLectures}
         submitting={createLectureMutation.isPending || updateLectureMutation.isPending}
         onSubmit={handleLectureSubmit}
+        onMediaDeleted={() => {
+          courseQuery.refetch();
+          lecturesQuery.refetch();
+        }}
       />
 
       <ConfirmDialog
@@ -761,6 +813,30 @@ export default function AdminCourseDetailPage() {
         confirming={deletePriceMutation.isPending}
         onConfirm={handleDeactivatePrice}
       />
+
+      <ConfirmDialog
+        open={Boolean(mediaToDelete)}
+        onOpenChange={(open) => {
+          if (!open) setMediaToDelete(null);
+        }}
+        title="Remove and delete media?"
+        description={`This will remove the ${mediaToDelete?.label || "media asset"} from this course or lecture, then delete it from Cloudflare R2.`}
+        confirmLabel="Remove and delete"
+        confirming={deleteMediaMutation.isPending}
+        onConfirm={handleDeleteAttachedMedia}
+      />
+
+      <MediaAssetPicker
+        open={Boolean(courseMediaPicker)}
+        onOpenChange={(open) => {
+          if (!open) setCourseMediaPicker(null);
+        }}
+        mediaKind="IMAGE"
+        title={`Select ${courseMediaPicker?.label || "course image"}`}
+        description="Reuse an image from the media library for this course."
+        selectedAssetId={courseMediaPicker?.selectedAssetId}
+        onSelect={handleSelectExistingCourseImage}
+      />
     </div>
   );
 }
@@ -776,16 +852,79 @@ function SetupItem({ done, label }) {
   );
 }
 
-function AssetStatus({ label, done }) {
+function CourseMediaPanel({
+  label,
+  asset,
+  fallbackAssetId,
+  onSelectExisting,
+  onDelete,
+}) {
+  const hasAsset = Boolean(asset?.id || fallbackAssetId);
+
   return (
-    <div className="flex items-center justify-between rounded-2xl border bg-white px-4 py-3 text-sm shadow-sm">
-      <span className="flex items-center gap-2 font-medium">
-        <ImageIcon className="h-4 w-4 text-muted-foreground" />
-        {label}
-      </span>
-      <span className={done ? "text-green-700" : "text-muted-foreground"}>
-        {done ? "Attached" : "Not attached"}
-      </span>
+    <div className="min-w-0 rounded-2xl border bg-white p-4 shadow-sm">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <span className="flex items-center gap-2 text-sm font-medium">
+          <ImageIcon className="h-4 w-4 text-muted-foreground" />
+          {label}
+        </span>
+        <span className={hasAsset ? "text-sm text-green-700" : "text-sm text-muted-foreground"}>
+          {hasAsset ? "Attached" : "Not attached"}
+        </span>
+      </div>
+
+      {asset?.id ? (
+        <>
+          <MediaAssetPreview asset={asset} compact showDetails />
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 rounded-xl"
+              onClick={onSelectExisting}
+            >
+              Choose existing
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 rounded-xl text-destructive hover:text-destructive"
+              onClick={() => onDelete(asset)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Remove
+            </Button>
+          </div>
+        </>
+      ) : fallbackAssetId ? (
+        <>
+          <div className="rounded-xl bg-neutral-50 p-3 text-xs text-muted-foreground">
+            Media asset is attached but details are not loaded.
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-3 h-10 w-full rounded-xl"
+            onClick={onSelectExisting}
+          >
+            Choose existing
+          </Button>
+        </>
+      ) : (
+        <>
+          <div className="rounded-xl bg-neutral-50 p-4 text-sm text-muted-foreground">
+            Upload a {label.toLowerCase()} image or choose one from the media library.
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-3 h-10 w-full rounded-xl"
+            onClick={onSelectExisting}
+          >
+            Choose existing
+          </Button>
+        </>
+      )}
     </div>
   );
 }

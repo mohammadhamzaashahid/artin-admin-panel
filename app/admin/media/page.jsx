@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { FileAudio, FileVideo, ImageIcon, Plus, Search, Trash2 } from "lucide-react";
+import { Plus, Search, Trash2 } from "lucide-react";
 
 import PageHeader from "@/components/common/PageHeader";
 import LoadingState from "@/components/common/LoadingState";
@@ -11,6 +11,7 @@ import PaginationBar from "@/components/common/PaginationBar";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
 import StatusBadge from "@/components/common/StatusBadge";
 import MediaUploadBox from "@/components/admin/MediaUploadBox";
+import MediaAssetPreview from "@/components/admin/MediaAssetPreview";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,15 +19,9 @@ import { Card, CardContent } from "@/components/ui/card";
 
 import { useDeleteMedia, useMedia } from "@/lib/hooks/useMedia";
 import { useDebounce } from "@/lib/hooks/useDebounce";
-import { formatBytes, formatDateTime, formatDuration } from "@/lib/utils";
+import { formatDateTime } from "@/lib/utils";
 
 const mediaKindOptions = ["ALL", "IMAGE", "AUDIO", "VIDEO"];
-
-function MediaIcon({ mediaKind }) {
-  if (mediaKind === "AUDIO") return <FileAudio className="h-5 w-5" />;
-  if (mediaKind === "VIDEO") return <FileVideo className="h-5 w-5" />;
-  return <ImageIcon className="h-5 w-5" />;
-}
 
 export default function AdminMediaPage() {
   const [page, setPage] = useState(1);
@@ -180,27 +175,21 @@ export default function AdminMediaPage() {
                 {mediaAssets.map((asset) => (
                   <div
                     key={asset.id}
-                    className="rounded-3xl border bg-white p-4 shadow-sm"
+                    className="overflow-hidden rounded-3xl border bg-white shadow-sm"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex min-w-0 items-start gap-3">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-neutral-100">
-                          <MediaIcon mediaKind={asset.mediaKind} />
-                        </div>
+                    <div className="p-3">
+                      <MediaAssetPreview asset={asset} showDetails />
+                    </div>
 
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold">
-                            {asset.originalFileName ||
-                              asset.fileName ||
-                              asset.objectKey ||
-                              "Media asset"}
-                          </p>
-                          <p className="mt-1 truncate text-xs text-muted-foreground">
-                            {asset.mimeType || "-"}
-                          </p>
+                    <div className="flex items-center justify-between gap-3 border-t px-4 py-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <StatusBadge value={asset.uploadStatus || asset.status || "UPLOADED"} />
                         </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Created {formatDateTime(asset.createdAt)}
+                        </p>
                       </div>
-
                       <Button
                         variant="ghost"
                         size="icon"
@@ -210,45 +199,6 @@ export default function AdminMediaPage() {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-
-                    <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                      <div className="rounded-xl bg-neutral-50 p-3">
-                        <p className="text-muted-foreground">Kind</p>
-                        <p className="mt-1 font-medium">{asset.mediaKind}</p>
-                      </div>
-
-                      <div className="rounded-xl bg-neutral-50 p-3">
-                        <p className="text-muted-foreground">Size</p>
-                        <p className="mt-1 font-medium">
-                          {formatBytes(asset.fileSizeBytes)}
-                        </p>
-                      </div>
-
-                      <div className="rounded-xl bg-neutral-50 p-3">
-                        <p className="text-muted-foreground">Duration</p>
-                        <p className="mt-1 font-medium">
-                          {formatDuration(asset.durationSeconds)}
-                        </p>
-                      </div>
-
-                      <div className="rounded-xl bg-neutral-50 p-3">
-                        <p className="text-muted-foreground">Status</p>
-                        <div className="mt-1">
-                          <StatusBadge value={asset.status || "UPLOADED"} />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 rounded-2xl bg-neutral-50 p-3">
-                      <p className="text-xs text-muted-foreground">Asset ID</p>
-                      <p className="mt-1 break-all text-xs font-medium">
-                        {asset.id}
-                      </p>
-                    </div>
-
-                    <p className="mt-3 text-xs text-muted-foreground">
-                      Created {formatDateTime(asset.createdAt)}
-                    </p>
                   </div>
                 ))}
               </div>
@@ -270,7 +220,7 @@ export default function AdminMediaPage() {
           if (!open) setAssetToDelete(null);
         }}
         title="Delete media asset?"
-        description="This only works if the asset is not currently attached to a course or lecture."
+        description="This will remove the asset from any course or lecture using it, then delete it from Cloudflare R2."
         confirmLabel="Delete"
         confirming={deleteMutation.isPending}
         onConfirm={handleDelete}

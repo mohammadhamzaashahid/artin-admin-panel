@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import {
   CheckCircle2,
@@ -10,6 +10,7 @@ import {
   Lock,
   PlayCircle,
   Save,
+  Trash2,
   Unlock,
 } from "lucide-react";
 
@@ -27,6 +28,10 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 
 import MediaUploadBox from "@/components/admin/MediaUploadBox";
+import MediaAssetPreview from "@/components/admin/MediaAssetPreview";
+import MediaAssetPicker from "@/components/admin/MediaAssetPicker";
+import ConfirmDialog from "@/components/common/ConfirmDialog";
+import { useDeleteMedia } from "@/lib/hooks/useMedia";
 import { cn, formatDuration } from "@/lib/utils";
 
 export default function LectureFormDrawer({
@@ -39,8 +44,15 @@ export default function LectureFormDrawer({
   existingLectures = [],
 
   onSubmit,
+  onMediaDeleted,
   submitting = false,
 }) {
+  const [uploadedAudioAsset, setUploadedAudioAsset] = useState(null);
+  const [uploadedVideoAsset, setUploadedVideoAsset] = useState(null);
+  const [mediaToDelete, setMediaToDelete] = useState(null);
+  const [mediaPicker, setMediaPicker] = useState(null);
+  const deleteMediaMutation = useDeleteMedia();
+
   const {
     register,
     handleSubmit,
@@ -70,6 +82,22 @@ export default function LectureFormDrawer({
   const hasAudio = Boolean(audioMediaAssetId);
   const hasVideo = Boolean(videoMediaAssetId);
   const hasAnyMedia = hasAudio || hasVideo;
+  const audioAsset =
+    uploadedAudioAsset?.id === audioMediaAssetId
+      ? uploadedAudioAsset
+      : initialData?.audioMediaAsset?.id === audioMediaAssetId
+        ? initialData.audioMediaAsset
+        : audioMediaAssetId
+          ? { id: audioMediaAssetId, mediaKind: "AUDIO" }
+          : null;
+  const videoAsset =
+    uploadedVideoAsset?.id === videoMediaAssetId
+      ? uploadedVideoAsset
+      : initialData?.videoMediaAsset?.id === videoMediaAssetId
+        ? initialData.videoMediaAsset
+        : videoMediaAssetId
+          ? { id: videoMediaAssetId, mediaKind: "VIDEO" }
+          : null;
 
   useEffect(() => {
     if (!open) return;
@@ -113,6 +141,7 @@ export default function LectureFormDrawer({
   };
 
   const handleAudioUploaded = (asset) => {
+    setUploadedAudioAsset(asset);
     setValue("audioMediaAssetId", asset.id, {
       shouldDirty: true,
       shouldValidate: true,
@@ -127,6 +156,7 @@ export default function LectureFormDrawer({
   };
 
   const handleVideoUploaded = (asset) => {
+    setUploadedVideoAsset(asset);
     setValue("videoMediaAssetId", asset.id, {
       shouldDirty: true,
       shouldValidate: true,
@@ -140,8 +170,63 @@ export default function LectureFormDrawer({
     }
   };
 
+  const handleSelectExistingMedia = (asset) => {
+    if (!mediaPicker?.kind || !asset?.id) return;
+
+    if (mediaPicker.kind === "audio") {
+      setUploadedAudioAsset(asset);
+      setValue("audioMediaAssetId", asset.id, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+
+    if (mediaPicker.kind === "video") {
+      setUploadedVideoAsset(asset);
+      setValue("videoMediaAssetId", asset.id, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+
+    if (asset.durationSeconds) {
+      setValue("durationSeconds", asset.durationSeconds, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+
+    setMediaPicker(null);
+  };
+
+  const handleDeleteMedia = async () => {
+    if (!mediaToDelete?.asset?.id) return;
+
+    await deleteMediaMutation.mutateAsync(mediaToDelete.asset.id);
+
+    if (mediaToDelete.kind === "audio") {
+      setValue("audioMediaAssetId", "", {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      setUploadedAudioAsset(null);
+    }
+
+    if (mediaToDelete.kind === "video") {
+      setValue("videoMediaAssetId", "", {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      setUploadedVideoAsset(null);
+    }
+
+    setMediaToDelete(null);
+    onMediaDeleted?.();
+  };
+
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <>
+      <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
         className={cn(
@@ -346,7 +431,22 @@ export default function LectureFormDrawer({
                   title="Audio Upload"
                   description="Attach audio for this lecture."
                   icon={FileAudio}
-                  assetId={audioMediaAssetId}
+                  asset={audioAsset}
+                  onDelete={(asset) =>
+                    setMediaToDelete({
+                      kind: "audio",
+                      label: "audio file",
+                      asset,
+                    })
+                  }
+                  onSelectExisting={() =>
+                    setMediaPicker({
+                      kind: "audio",
+                      mediaKind: "AUDIO",
+                      title: "Select audio asset",
+                      selectedAssetId: audioMediaAssetId,
+                    })
+                  }
                 >
                   <MediaUploadBox
                     mediaKind="AUDIO"
@@ -362,7 +462,22 @@ export default function LectureFormDrawer({
                   title="Video Upload"
                   description="Attach video when needed."
                   icon={FileVideo}
-                  assetId={videoMediaAssetId}
+                  asset={videoAsset}
+                  onDelete={(asset) =>
+                    setMediaToDelete({
+                      kind: "video",
+                      label: "video file",
+                      asset,
+                    })
+                  }
+                  onSelectExisting={() =>
+                    setMediaPicker({
+                      kind: "video",
+                      mediaKind: "VIDEO",
+                      title: "Select video asset",
+                      selectedAssetId: videoMediaAssetId,
+                    })
+                  }
                 >
                   <MediaUploadBox
                     mediaKind="VIDEO"
@@ -405,7 +520,32 @@ export default function LectureFormDrawer({
           </div>
         </form>
       </SheetContent>
-    </Sheet>
+      </Sheet>
+
+      <ConfirmDialog
+        open={Boolean(mediaToDelete)}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setMediaToDelete(null);
+        }}
+        title="Remove and delete media?"
+        description={`This will detach the ${mediaToDelete?.label || "media file"} from this lecture and delete it from Cloudflare R2.`}
+        confirmLabel="Remove and delete"
+        confirming={deleteMediaMutation.isPending}
+        onConfirm={handleDeleteMedia}
+      />
+
+      <MediaAssetPicker
+        open={Boolean(mediaPicker)}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setMediaPicker(null);
+        }}
+        mediaKind={mediaPicker?.mediaKind || "AUDIO"}
+        title={mediaPicker?.title}
+        description="Reuse an uploaded media asset for this lecture. Save the lecture to persist the selection."
+        selectedAssetId={mediaPicker?.selectedAssetId}
+        onSelect={handleSelectExistingMedia}
+      />
+    </>
   );
 }
 
@@ -413,9 +553,13 @@ function MediaAssetSection({
   title,
   description,
   icon: Icon,
-  assetId,
+  asset,
+  onDelete,
+  onSelectExisting,
   children,
 }) {
+  const assetId = asset?.id;
+
   return (
     <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
       <div className="border-b px-4 py-4 sm:px-5">
@@ -450,12 +594,33 @@ function MediaAssetSection({
       <div className="space-y-4 p-4 sm:p-5">
         {children}
 
+        <Button
+          type="button"
+          variant="outline"
+          className="h-10 w-full rounded-xl bg-white"
+          onClick={onSelectExisting}
+        >
+          Choose existing
+        </Button>
+
         {assetId && (
-          <div className="rounded-xl bg-neutral-50 p-3 text-xs text-muted-foreground">
-            <div className="inline-flex items-center gap-2 rounded-full bg-green-50 px-3 py-1 text-green-700">
+          <div className="space-y-3 rounded-xl bg-neutral-50 p-3">
+            <div className="inline-flex items-center gap-2 rounded-full bg-green-50 px-3 py-1 text-xs text-green-700">
               <CheckCircle2 className="h-3.5 w-3.5" />
               Attached to lecture
             </div>
+
+            <MediaAssetPreview asset={asset} compact showDetails />
+
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 w-full rounded-xl bg-white text-destructive hover:text-destructive"
+              onClick={() => onDelete?.(asset)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Remove and delete
+            </Button>
           </div>
         )}
       </div>
