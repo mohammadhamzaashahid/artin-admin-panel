@@ -107,8 +107,7 @@ export default function AdminSidebar() {
           <div className="rounded-2xl bg-neutral-50 p-4">
             <p className="text-sm font-medium">Admin mode</p>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Manage content carefully. Published courses become visible to
-              users.
+              Manage content and analyticsz
             </p>
           </div>
         </div>
