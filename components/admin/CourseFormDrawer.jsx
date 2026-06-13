@@ -16,6 +16,19 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 
+function getTagId(tag) {
+  if (typeof tag === "string") return tag;
+  return tag?.id || tag?.tagId || tag?.tag?.id || "";
+}
+
+function normalizeTagIds(tags) {
+  if (!Array.isArray(tags)) return [];
+
+  return tags
+    .map(getTagId)
+    .filter((tagId) => typeof tagId === "string" && tagId.trim().length > 0);
+}
+
 export default function CourseFormDrawer({
   open,
   onOpenChange,
@@ -53,10 +66,7 @@ export default function CourseFormDrawer({
         shortDescription: initialData?.shortDescription || "",
         description: initialData?.description || "",
         categoryId: initialData?.categoryId || initialData?.category?.id || "",
-        tagIds:
-          initialData?.tagIds ||
-          initialData?.tags?.map((tag) => tag.id) ||
-          [],
+        tagIds: normalizeTagIds(initialData?.tagIds || initialData?.tags),
       });
     }
   }, [open, initialData, reset]);
@@ -68,7 +78,7 @@ export default function CourseFormDrawer({
       shortDescription: values.shortDescription?.trim() || undefined,
       description: values.description?.trim() || undefined,
       categoryId: values.categoryId || undefined,
-      tagIds: Array.isArray(values.tagIds) ? values.tagIds : [],
+      tagIds: normalizeTagIds(values.tagIds),
     });
   };
 
