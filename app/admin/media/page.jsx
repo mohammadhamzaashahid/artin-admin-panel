@@ -59,7 +59,7 @@ export default function AdminMediaPage() {
     <div>
       <PageHeader
         title="Media Library"
-        description="Upload and manage R2 media assets used by courses and lectures."
+        description="Upload and manage media assets used by courses and lectures."
       />
 
       <div className="mb-5 grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
@@ -69,7 +69,7 @@ export default function AdminMediaPage() {
               <div>
                 <p className="font-semibold">Upload new asset</p>
                 <p className="text-sm text-muted-foreground">
-                  Direct upload to Cloudflare R2.
+                  Upload directly to the server.
                 </p>
               </div>
               <Plus className="h-5 w-5 text-muted-foreground" />
@@ -90,7 +90,7 @@ export default function AdminMediaPage() {
             <MediaUploadBox
               mediaKind={uploadKind}
               label={`Upload ${uploadKind.toLowerCase()}`}
-              description="The selected file will upload directly to R2, then be registered as a media asset."
+              description="The selected file will upload to the server and be registered as a media asset."
               requireDuration={uploadKind !== "IMAGE"}
               onUploaded={() => mediaQuery.refetch()}
             />
@@ -102,15 +102,15 @@ export default function AdminMediaPage() {
             <p className="font-semibold">Media flow</p>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               <div className="rounded-2xl border bg-neutral-50 p-4">
-                <p className="text-sm font-medium">1. Request URL</p>
+                <p className="text-sm font-medium">1. Select file</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Backend creates signed R2 URL.
+                  Pick an image, audio, or video file.
                 </p>
               </div>
               <div className="rounded-2xl border bg-neutral-50 p-4">
-                <p className="text-sm font-medium">2. Upload file</p>
+                <p className="text-sm font-medium">2. Upload to server</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Browser uploads file to R2.
+                  File is uploaded directly to the server.
                 </p>
               </div>
               <div className="rounded-2xl border bg-neutral-50 p-4">
