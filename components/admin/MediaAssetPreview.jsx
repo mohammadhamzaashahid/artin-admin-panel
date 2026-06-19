@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { FileAudio, FileImage, FileVideo, Loader2 } from "lucide-react";
+import { Download, FileAudio, FileImage, FileText, FileVideo, Loader2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { useMediaPreviewUrl } from "@/lib/hooks/useMedia";
@@ -24,7 +24,10 @@ function getDirectUrl(asset) {
 
 function MediaFallback({ mediaKind, label, loading }) {
   const Icon =
-    mediaKind === "AUDIO" ? FileAudio : mediaKind === "VIDEO" ? FileVideo : FileImage;
+    mediaKind === "AUDIO" ? FileAudio
+    : mediaKind === "VIDEO" ? FileVideo
+    : mediaKind === "DOCUMENT" ? FileText
+    : FileImage;
 
   return (
     <div className="flex h-full min-h-36 flex-col items-center justify-center gap-2 rounded-xl bg-neutral-100 p-4 text-center text-muted-foreground">
@@ -82,6 +85,26 @@ export default function MediaAssetPreview({
           >
             <track kind="captions" />
           </video>
+        ) : mediaKind === "DOCUMENT" ? (
+          <div className="flex h-full min-h-36 flex-col justify-center gap-3 bg-neutral-50 p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white">
+                <FileText className="h-5 w-5 text-neutral-700" />
+              </div>
+              <p className="line-clamp-2 text-sm font-medium">{name}</p>
+            </div>
+            {sourceUrl && (
+              <a
+                href={sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 rounded-xl border bg-white px-3 py-2 text-xs font-medium hover:bg-neutral-50"
+              >
+                <Download className="h-3.5 w-3.5" />
+                View / Download
+              </a>
+            )}
+          </div>
         ) : (
           <MediaFallback
             mediaKind={mediaKind}

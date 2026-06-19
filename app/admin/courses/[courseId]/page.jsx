@@ -8,7 +8,9 @@ import {
   ArrowLeft,
   CheckCircle2,
   Edit2,
+  FileText,
   ImageIcon,
+  Images,
   Plus,
   Rocket,
   Trash2,
@@ -25,6 +27,7 @@ import MediaAssetPreview from "@/components/admin/MediaAssetPreview";
 import MediaAssetPicker from "@/components/admin/MediaAssetPicker";
 import PriceFormDrawer from "@/components/admin/PriceFormDrawer";
 import LectureFormDrawer from "@/components/admin/LectureFormDrawer";
+import BatchFormDrawer from "@/components/admin/BatchFormDrawer";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,11 +48,15 @@ import {
 
 import {
   useCourse,
+  useCourseBatches,
   useCoursePrices,
+  useCreateCourseBatch,
   useCreateCoursePrice,
+  useDeleteCourseBatch,
   useDeleteCoursePrice,
   usePublishCourse,
   useUpdateCourse,
+  useUpdateCourseBatch,
   useUpdateCoursePrice,
 } from "@/lib/hooks/useCourses";
 import { useCategories } from "@/lib/hooks/useCategories";
@@ -77,9 +84,15 @@ export default function AdminCourseDetailPage() {
   const [priceToDeactivate, setPriceToDeactivate] = useState(null);
   const [mediaToDelete, setMediaToDelete] = useState(null);
   const [courseMediaPicker, setCourseMediaPicker] = useState(null);
+  const [batchDrawerOpen, setBatchDrawerOpen] = useState(false);
+  const [selectedBatch, setSelectedBatch] = useState(null);
+  const [batchToDelete, setBatchToDelete] = useState(null);
+  const [outlineMediaPickerOpen, setOutlineMediaPickerOpen] = useState(false);
+  const [flyerMediaPickerOpen, setFlyerMediaPickerOpen] = useState(false);
 
   const courseQuery = useCourse(courseId);
   const pricesQuery = useCoursePrices(courseId);
+  const batchesQuery = useCourseBatches(courseId);
   const lecturesQuery = useCourseLectures(courseId);
   const categoriesQuery = useCategories({ page: 1, limit: 100 });
   const tagsQuery = useTags({ page: 1, limit: 100 });
@@ -91,6 +104,10 @@ export default function AdminCourseDetailPage() {
   const updatePriceMutation = useUpdateCoursePrice();
   const deletePriceMutation = useDeleteCoursePrice();
 
+  const createBatchMutation = useCreateCourseBatch();
+  const updateBatchMutation = useUpdateCourseBatch();
+  const deleteBatchMutation = useDeleteCourseBatch();
+
   const createLectureMutation = useCreateLecture();
   const updateLectureMutation = useUpdateLecture();
   const archiveLectureMutation = useArchiveLecture();
@@ -99,6 +116,7 @@ export default function AdminCourseDetailPage() {
 
   const course = courseQuery.data;
   const prices = pricesQuery.data || [];
+  const batches = batchesQuery.data || [];
   const lectures = useMemo(() => lecturesQuery.data || [], [lecturesQuery.data]);
   const categories = categoriesQuery.data?.categories || [];
   const tags = tagsQuery.data?.tags || [];
@@ -161,10 +179,65 @@ export default function AdminCourseDetailPage() {
         ? { bannerImageAssetId: asset.id }
         : { thumbnailImageAssetId: asset.id };
 
+    await updateCourseMutation.mutateAsync({ courseId, payload });
+  };
+
+  const handleSelectExistingOutline = async (asset) => {
+    if (!asset?.id) return;
+    await handleAttachOutline(asset);
+    setOutlineMediaPickerOpen(false);
+  };
+
+  const handleSelectExistingFlyer = async (asset) => {
+    if (!asset?.id) return;
+    await handleAddFlyer(asset);
+    setFlyerMediaPickerOpen(false);
+  };
+
+  const handleAddFlyer = async (asset) => {
+    const currentIds = (course?.flyerAssets || []).map((fa) => fa.mediaAsset?.id).filter(Boolean);
     await updateCourseMutation.mutateAsync({
       courseId,
-      payload,
+      payload: { flyerAssetIds: [...currentIds, asset.id] },
     });
+  };
+
+  const handleRemoveFlyerAsset = async (flyerItem) => {
+    const currentIds = (course?.flyerAssets || []).map((fa) => fa.mediaAsset?.id).filter(Boolean);
+    await updateCourseMutation.mutateAsync({
+      courseId,
+      payload: { flyerAssetIds: currentIds.filter((id) => id !== flyerItem.mediaAsset?.id) },
+    });
+  };
+
+  const handleAttachOutline = async (asset) => {
+    await updateCourseMutation.mutateAsync({
+      courseId,
+      payload: { outlineDocumentAssetId: asset.id },
+    });
+  };
+
+  const handleRemoveOutline = async () => {
+    await updateCourseMutation.mutateAsync({
+      courseId,
+      payload: { outlineDocumentAssetId: null },
+    });
+  };
+
+  const handleBatchSubmit = async (payload) => {
+    if (selectedBatch?.id) {
+      await updateBatchMutation.mutateAsync({ batchId: selectedBatch.id, courseId, payload });
+    } else {
+      await createBatchMutation.mutateAsync({ courseId, payload });
+    }
+    setSelectedBatch(null);
+    setBatchDrawerOpen(false);
+  };
+
+  const handleDeleteBatch = async () => {
+    if (!batchToDelete?.id) return;
+    await deleteBatchMutation.mutateAsync({ batchId: batchToDelete.id, courseId });
+    setBatchToDelete(null);
   };
 
   const handleSelectExistingCourseImage = async (asset) => {
@@ -341,58 +414,201 @@ export default function AdminCourseDetailPage() {
             <TabsTrigger className="h-8 !flex-none rounded-xl px-4" value="lectures">
               Lectures
             </TabsTrigger>
+            <TabsTrigger className="h-8 !flex-none rounded-xl px-4" value="batches">
+              Batches
+            </TabsTrigger>
             <TabsTrigger className="h-8 !flex-none rounded-xl px-4" value="overview">
               Overview
             </TabsTrigger>
           </TabsList>
         </div>
 
-        <TabsContent value="media" className="min-w-0">
-          <div className="grid min-w-0 gap-4 xl:grid-cols-2">
-            <MediaUploadBox
-              mediaKind="IMAGE"
-              label="Upload course banner"
-              description="Upload and attach the banner image."
-              onUploaded={(asset) => handleAttachImage(asset, "banner")}
-            />
+        <TabsContent value="media" className="min-w-0 space-y-6">
+          {/* Banner & Thumbnail */}
+          <div>
+            <div className="grid min-w-0 gap-4 xl:grid-cols-2">
+              <MediaUploadBox
+                mediaKind="IMAGE"
+                label="Upload course banner"
+                description="Upload and attach the banner image."
+                onUploaded={(asset) => handleAttachImage(asset, "banner")}
+              />
+              <MediaUploadBox
+                mediaKind="IMAGE"
+                label="Upload course thumbnail"
+                description="Upload and attach the thumbnail image."
+                onUploaded={(asset) => handleAttachImage(asset, "thumbnail")}
+              />
+            </div>
 
-            <MediaUploadBox
-              mediaKind="IMAGE"
-              label="Upload course thumbnail"
-              description="Upload and attach the thumbnail image."
-              onUploaded={(asset) => handleAttachImage(asset, "thumbnail")}
-            />
+            <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2">
+              <CourseMediaPanel
+                label="Banner"
+                asset={course.bannerImageAsset}
+                fallbackAssetId={course.bannerImageAssetId}
+                onSelectExisting={() =>
+                  setCourseMediaPicker({
+                    target: "banner",
+                    label: "course banner",
+                    selectedAssetId: course.bannerImageAsset?.id || course.bannerImageAssetId,
+                  })
+                }
+                onDelete={(asset) => setMediaToDelete({ label: "banner image", asset })}
+              />
+              <CourseMediaPanel
+                label="Thumbnail"
+                asset={course.thumbnailImageAsset}
+                fallbackAssetId={course.thumbnailImageAssetId}
+                onSelectExisting={() =>
+                  setCourseMediaPicker({
+                    target: "thumbnail",
+                    label: "course thumbnail",
+                    selectedAssetId: course.thumbnailImageAsset?.id || course.thumbnailImageAssetId,
+                  })
+                }
+                onDelete={(asset) => setMediaToDelete({ label: "thumbnail image", asset })}
+              />
+            </div>
           </div>
 
-          <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2">
-            <CourseMediaPanel
-              label="Banner"
-              asset={course.bannerImageAsset}
-              fallbackAssetId={course.bannerImageAssetId}
-              onSelectExisting={() =>
-                setCourseMediaPicker({
-                  target: "banner",
-                  label: "course banner",
-                  selectedAssetId:
-                    course.bannerImageAsset?.id || course.bannerImageAssetId,
-                })
-              }
-              onDelete={(asset) => setMediaToDelete({ label: "banner image", asset })}
-            />
-            <CourseMediaPanel
-              label="Thumbnail"
-              asset={course.thumbnailImageAsset}
-              fallbackAssetId={course.thumbnailImageAssetId}
-              onSelectExisting={() =>
-                setCourseMediaPicker({
-                  target: "thumbnail",
-                  label: "course thumbnail",
-                  selectedAssetId:
-                    course.thumbnailImageAsset?.id || course.thumbnailImageAssetId,
-                })
-              }
-              onDelete={(asset) => setMediaToDelete({ label: "thumbnail image", asset })}
-            />
+          {/* Course Outline */}
+          <div>
+            <div className="mb-3 flex items-center gap-2">
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <p className="text-sm font-semibold">Course Outline</p>
+            </div>
+            <p className="mb-4 text-sm text-muted-foreground">
+              Upload a PDF, Word document, or plain-text file describing the course outline.
+            </p>
+
+            <div className="grid min-w-0 gap-4 xl:grid-cols-2">
+              <MediaUploadBox
+                mediaKind="DOCUMENT"
+                label="Upload course outline"
+                description="PDF, Word (.docx), or plain text — max 50 MB."
+                onUploaded={handleAttachOutline}
+              />
+
+              <div className="min-w-0 rounded-2xl border bg-white p-4 shadow-sm">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-2 text-sm font-medium">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    Outline Document
+                  </span>
+                  <span className={course.outlineDocumentAsset?.id ? "text-sm text-green-700" : "text-sm text-muted-foreground"}>
+                    {course.outlineDocumentAsset?.id ? "Attached" : "Not attached"}
+                  </span>
+                </div>
+
+                {course.outlineDocumentAsset?.id ? (
+                  <>
+                    <MediaAssetPreview asset={course.outlineDocumentAsset} compact showDetails />
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-10 rounded-xl"
+                        onClick={() => setOutlineMediaPickerOpen(true)}
+                      >
+                        Choose existing
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-10 rounded-xl text-destructive hover:text-destructive"
+                        onClick={handleRemoveOutline}
+                        disabled={updateCourseMutation.isPending}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Remove
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="rounded-xl bg-neutral-50 p-4 text-sm text-muted-foreground">
+                      Upload a document above or choose one from the media library.
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="mt-3 h-10 w-full rounded-xl"
+                      onClick={() => setOutlineMediaPickerOpen(true)}
+                    >
+                      Choose existing
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Course Flyers */}
+          <div>
+            <div className="mb-3 flex items-center gap-2">
+              <Images className="h-4 w-4 text-muted-foreground" />
+              <p className="text-sm font-semibold">Course Flyers</p>
+            </div>
+            <p className="mb-4 text-sm text-muted-foreground">
+              Upload one or more promotional flyer images for this course.
+            </p>
+
+            <div className="grid min-w-0 gap-4 xl:grid-cols-2">
+              <MediaUploadBox
+                mediaKind="IMAGE"
+                label="Upload course flyer"
+                description="Upload a flyer image and it will be added to the list below."
+                onUploaded={handleAddFlyer}
+              />
+              <div className="flex flex-col justify-center rounded-2xl border bg-white p-4">
+                <p className="text-sm font-medium">Choose from library</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Pick an already-uploaded image from the media library to use as a flyer.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-4 h-10 rounded-xl"
+                  onClick={() => setFlyerMediaPickerOpen(true)}
+                >
+                  Choose existing
+                </Button>
+              </div>
+            </div>
+
+            {(course.flyerAssets || []).length > 0 && (
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {(course.flyerAssets || []).map((flyerItem) => (
+                  <div key={flyerItem.id} className="min-w-0 rounded-2xl border bg-white p-3 shadow-sm">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        Flyer {flyerItem.displayOrder + 1}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 rounded-xl text-destructive hover:text-destructive"
+                        disabled={updateCourseMutation.isPending}
+                        onClick={() => handleRemoveFlyerAsset(flyerItem)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    <MediaAssetPreview asset={flyerItem.mediaAsset} compact />
+                    <p className="mt-2 truncate text-xs text-muted-foreground">
+                      {flyerItem.mediaAsset?.originalFilename || "Flyer image"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {(course.flyerAssets || []).length === 0 && (
+              <div className="mt-4 rounded-2xl border border-dashed bg-neutral-50 p-5 text-center text-sm text-muted-foreground">
+                No flyers uploaded yet. Upload the first one above.
+              </div>
+            )}
           </div>
         </TabsContent>
 
@@ -725,6 +941,151 @@ export default function AdminCourseDetailPage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="batches" className="min-w-0">
+          <Card className="w-full overflow-hidden rounded-2xl border-0 shadow-sm">
+            <div className="flex flex-col gap-3 border-b bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-semibold">Course Batches</p>
+                <p className="text-sm text-muted-foreground">
+                  Schedule upcoming classes with dates, sessions, and fees.
+                </p>
+              </div>
+              <Button
+                className="h-10 w-full rounded-xl sm:w-auto"
+                onClick={() => {
+                  setSelectedBatch(null);
+                  setBatchDrawerOpen(true);
+                }}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Batch
+              </Button>
+            </div>
+
+            <CardContent className="p-0">
+              {batchesQuery.isLoading ? (
+                <LoadingState label="Loading batches..." />
+              ) : batches.length === 0 ? (
+                <div className="p-5 text-sm text-muted-foreground">
+                  No batches yet. Add the first upcoming batch above.
+                </div>
+              ) : (
+                <>
+                  {/* Desktop table */}
+                  <div className="hidden overflow-x-auto md:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-neutral-50">
+                          <TableHead className="px-5">Batch</TableHead>
+                          <TableHead>Start</TableHead>
+                          <TableHead>End</TableHead>
+                          <TableHead>Sessions</TableHead>
+                          <TableHead>Fee</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {batches.map((batch) => (
+                          <TableRow key={batch.id}>
+                            <TableCell className="px-5">
+                              <p className="font-medium">{batch.title || "—"}</p>
+                              {batch.description && (
+                                <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                                  {batch.description}
+                                </p>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {formatDateTime(batch.startDate)}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {formatDateTime(batch.endDate)}
+                            </TableCell>
+                            <TableCell>{batch.numberOfSessions}</TableCell>
+                            <TableCell>
+                              {batch.currency} {batch.fee}
+                            </TableCell>
+                            <TableCell>
+                              <StatusBadge value={batch.status} />
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="rounded-xl"
+                                onClick={() => {
+                                  setSelectedBatch(batch);
+                                  setBatchDrawerOpen(true);
+                                }}
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="rounded-xl text-destructive"
+                                onClick={() => setBatchToDelete(batch)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Mobile cards */}
+                  <div className="space-y-3 p-3 sm:p-4 md:hidden">
+                    {batches.map((batch) => (
+                      <div key={batch.id} className="rounded-2xl border bg-white p-3.5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold">{batch.title || "Batch"}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {formatDateTime(batch.startDate)} → {formatDateTime(batch.endDate)}
+                            </p>
+                          </div>
+                          <StatusBadge value={batch.status} />
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                          <span>{batch.numberOfSessions} sessions</span>
+                          <span>{batch.currency} {batch.fee}</span>
+                        </div>
+                        {batch.description && (
+                          <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
+                            {batch.description}
+                          </p>
+                        )}
+                        <div className="mt-4 grid grid-cols-2 gap-2">
+                          <Button
+                            variant="outline"
+                            className="h-9 rounded-xl px-2"
+                            onClick={() => {
+                              setSelectedBatch(batch);
+                              setBatchDrawerOpen(true);
+                            }}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="h-9 rounded-xl px-2 text-destructive"
+                            onClick={() => setBatchToDelete(batch)}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="overview" className="min-w-0">
           <Card className="w-full rounded-2xl border-0 shadow-sm">
             <CardHeader>
@@ -836,6 +1197,49 @@ export default function AdminCourseDetailPage() {
         description="Reuse an image from the media library for this course."
         selectedAssetId={courseMediaPicker?.selectedAssetId}
         onSelect={handleSelectExistingCourseImage}
+      />
+
+      <MediaAssetPicker
+        open={outlineMediaPickerOpen}
+        onOpenChange={setOutlineMediaPickerOpen}
+        mediaKind="DOCUMENT"
+        title="Select course outline document"
+        description="Choose an uploaded PDF, Word document, or text file."
+        selectedAssetId={course?.outlineDocumentAsset?.id || course?.outlineDocumentAssetId}
+        onSelect={handleSelectExistingOutline}
+      />
+
+      <MediaAssetPicker
+        open={flyerMediaPickerOpen}
+        onOpenChange={setFlyerMediaPickerOpen}
+        mediaKind="IMAGE"
+        title="Select flyer image"
+        description="Choose an uploaded image to add as a course flyer."
+        onSelect={handleSelectExistingFlyer}
+      />
+
+      <BatchFormDrawer
+        open={batchDrawerOpen}
+        onOpenChange={(open) => {
+          setBatchDrawerOpen(open);
+          if (!open) setSelectedBatch(null);
+        }}
+        mode={selectedBatch ? "edit" : "create"}
+        initialData={selectedBatch}
+        submitting={createBatchMutation.isPending || updateBatchMutation.isPending}
+        onSubmit={handleBatchSubmit}
+      />
+
+      <ConfirmDialog
+        open={Boolean(batchToDelete)}
+        onOpenChange={(open) => {
+          if (!open) setBatchToDelete(null);
+        }}
+        title="Delete batch?"
+        description="This will permanently delete this batch. This cannot be undone."
+        confirmLabel="Delete"
+        confirming={deleteBatchMutation.isPending}
+        onConfirm={handleDeleteBatch}
       />
     </div>
   );

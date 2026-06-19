@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import {
   FileAudio,
+  FileText,
   FileVideo,
   ImageIcon,
   Loader2,
@@ -22,12 +23,14 @@ const acceptMap = {
   IMAGE: "image/png,image/jpeg,image/jpg,image/webp",
   AUDIO: "audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/aac,audio/mp4",
   VIDEO: "video/mp4,video/webm,video/quicktime",
+  DOCUMENT: "application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,text/plain",
 };
 
 const iconMap = {
   IMAGE: ImageIcon,
   AUDIO: FileAudio,
   VIDEO: FileVideo,
+  DOCUMENT: FileText,
 };
 
 function normalizeMimeType(file, mediaKind) {
@@ -45,6 +48,10 @@ function normalizeMimeType(file, mediaKind) {
   if (name.endsWith(".webp")) return "image/webp";
   if (name.endsWith(".png")) return "image/png";
   if (name.endsWith(".jpg") || name.endsWith(".jpeg")) return "image/jpeg";
+  if (name.endsWith(".pdf")) return "application/pdf";
+  if (name.endsWith(".docx")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  if (name.endsWith(".doc")) return "application/msword";
+  if (name.endsWith(".txt")) return "text/plain";
 
   return "application/octet-stream";
 }
@@ -152,9 +159,8 @@ export default function MediaUploadBox({
               </Button>
             </div>
 
-            {(mediaKind === "AUDIO" ||
-              mediaKind === "VIDEO" ||
-              requireDuration) && (
+            {(mediaKind === "AUDIO" || mediaKind === "VIDEO" || requireDuration) &&
+              mediaKind !== "DOCUMENT" && (
               <div className="mt-4 space-y-2">
                 <Label>Duration seconds</Label>
                 <Input
