@@ -4,10 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BookOpen,
+  BookMarked,
   FolderTree,
   Home,
   ImageIcon,
   Layers3,
+  ShoppingBag,
   Tags,
   Users,
   FileAudio
@@ -29,6 +31,16 @@ const navItems = [
     label: "Lectures",
     href: "/admin/lectures",
     icon: FileAudio,
+  },
+  {
+    label: "Books",
+    href: "/admin/books",
+    icon: BookMarked,
+  },
+  {
+    label: "Book Orders",
+    href: "/admin/orders/books",
+    icon: ShoppingBag,
   },
   {
     label: "Categories",
