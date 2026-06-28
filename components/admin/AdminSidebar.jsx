@@ -9,6 +9,7 @@ import {
   Home,
   ImageIcon,
   Layers3,
+  MonitorPlay,
   ShoppingBag,
   Tags,
   Users,
@@ -31,6 +32,11 @@ const navItems = [
     label: "Lectures",
     href: "/admin/lectures",
     icon: FileAudio,
+  },
+  {
+    label: "Live Classes",
+    href: "/admin/live-classes",
+    icon: MonitorPlay,
   },
   {
     label: "Books",
