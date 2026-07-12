@@ -48,7 +48,7 @@ export default function LiveClassFormDrawer({
       description: "",
       startDate: "",
       endDate: "",
-      timeDuration: "",
+      durationDays: "",
       joiningLink: "",
       courseId: "",
     },
@@ -62,7 +62,7 @@ export default function LiveClassFormDrawer({
         description: initialData?.description || "",
         startDate: toDatetimeLocalValue(initialData?.startDate),
         endDate: toDatetimeLocalValue(initialData?.endDate),
-        timeDuration: initialData?.timeDuration || "",
+        durationDays: initialData?.durationDays || "",
         joiningLink: initialData?.joiningLink || "",
         courseId: initialData?.courseId || initialData?.course?.id || "",
       });
@@ -76,7 +76,7 @@ export default function LiveClassFormDrawer({
       description: values.description?.trim() || undefined,
       startDate: toISOString(values.startDate),
       endDate: toISOString(values.endDate),
-      timeDuration: Number(values.timeDuration),
+      durationDays: Number(values.durationDays),
       joiningLink: values.joiningLink?.trim() || undefined,
       courseId: values.courseId || undefined,
     });
@@ -198,25 +198,25 @@ export default function LiveClassFormDrawer({
 
                   <div className="space-y-2">
                     <Label>
-                      Duration (minutes) <span className="text-destructive">*</span>
+                      Duration (days) <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       type="number"
                       min="1"
                       step="1"
                       className="h-12 rounded-xl"
-                      placeholder="e.g. 90"
+                      placeholder="e.g. 7"
                       disabled={submitting}
-                      {...register("timeDuration", {
+                      {...register("durationDays", {
                         required: "Duration is required",
-                        min: { value: 1, message: "Must be at least 1 minute" },
+                        min: { value: 1, message: "Must be at least 1 day" },
                       })}
                     />
-                    {errors.timeDuration && (
-                      <p className="text-xs text-destructive">{errors.timeDuration.message}</p>
+                    {errors.durationDays && (
+                      <p className="text-xs text-destructive">{errors.durationDays.message}</p>
                     )}
                     <p className="text-xs text-muted-foreground">
-                      Session length shown on the class detail page.
+                      Access length shown on the class detail page.
                     </p>
                   </div>
                 </div>

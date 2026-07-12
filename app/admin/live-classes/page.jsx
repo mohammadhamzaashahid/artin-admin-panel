@@ -195,7 +195,7 @@ export default function AdminLiveClassesPage() {
                         <TableCell className="text-sm text-muted-foreground">
                           <div className="flex items-center gap-1.5">
                             <Clock className="h-3.5 w-3.5 shrink-0" />
-                            {liveClass.timeDuration} min
+                            {liveClass.durationDays} day{liveClass.durationDays === 1 ? "" : "s"}
                           </div>
                         </TableCell>
 
@@ -272,7 +272,7 @@ export default function AdminLiveClassesPage() {
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {liveClass.timeDuration} min
+                        {liveClass.durationDays} day{liveClass.durationDays === 1 ? "" : "s"}
                       </span>
                       {liveClass.course?.title && (
                         <span>{liveClass.course.title}</span>

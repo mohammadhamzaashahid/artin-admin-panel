@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Archive, Edit2, Eye, Plus, Search } from "lucide-react";
+import { Edit2, Eye, Plus, Search, Trash2 } from "lucide-react";
 
 import PageHeader from "@/components/common/PageHeader";
 import LoadingState from "@/components/common/LoadingState";
@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/table";
 
 import {
-  useArchiveCourse,
+  useDeleteCourse,
   useCourses,
   useCreateCourse,
   useUpdateCourse,
@@ -53,7 +53,7 @@ export default function AdminCoursesPage() {
   const [searchInput, setSearchInput] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState(null);
-  const [courseToArchive, setCourseToArchive] = useState(null);
+  const [courseToDelete, setCourseToDelete] = useState(null);
 
   const debouncedSearch = useDebounce(searchInput, 400);
 
@@ -72,7 +72,7 @@ export default function AdminCoursesPage() {
 
   const createMutation = useCreateCourse();
   const updateMutation = useUpdateCourse();
-  const archiveMutation = useArchiveCourse();
+  const deleteMutation = useDeleteCourse();
 
   const courses = coursesQuery.data?.courses || [];
   const pagination = coursesQuery.data?.pagination || {};
@@ -116,11 +116,11 @@ export default function AdminCoursesPage() {
     }
   };
 
-  const handleArchive = async () => {
-    if (!courseToArchive?.id) return;
+  const handleDelete = async () => {
+    if (!courseToDelete?.id) return;
 
-    await archiveMutation.mutateAsync(courseToArchive.id);
-    setCourseToArchive(null);
+    await deleteMutation.mutateAsync(courseToDelete.id);
+    setCourseToDelete(null);
   };
 
   return (
@@ -256,10 +256,10 @@ export default function AdminCoursesPage() {
                               variant="ghost"
                               size="icon"
                               className="rounded-xl text-destructive hover:text-destructive"
-                              title="Archive"
-                              onClick={() => setCourseToArchive(course)}
+                              title="Delete"
+                              onClick={() => setCourseToDelete(course)}
                             >
-                              <Archive className="h-4 w-4" />
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>
@@ -310,9 +310,9 @@ export default function AdminCoursesPage() {
                       <Button
                         variant="outline"
                         className="h-9 rounded-xl px-2 text-destructive"
-                        onClick={() => setCourseToArchive(course)}
+                        onClick={() => setCourseToDelete(course)}
                       >
-                        Archive
+                        Delete
                       </Button>
                     </div>
                   </div>
@@ -342,15 +342,15 @@ export default function AdminCoursesPage() {
       />
 
       <ConfirmDialog
-        open={Boolean(courseToArchive)}
+        open={Boolean(courseToDelete)}
         onOpenChange={(open) => {
-          if (!open) setCourseToArchive(null);
+          if (!open) setCourseToDelete(null);
         }}
-        title="Archive course?"
-        description="This will archive the selected course."
-        confirmLabel="Archive"
-        confirming={archiveMutation.isPending}
-        onConfirm={handleArchive}
+        title="Delete course?"
+        description="This will permanently delete the selected course and all of its lectures, pricing, and batches. This action cannot be undone."
+        confirmLabel="Delete"
+        confirming={deleteMutation.isPending}
+        onConfirm={handleDelete}
       />
     </div>
   );
