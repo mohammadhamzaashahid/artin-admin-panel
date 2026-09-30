@@ -48,9 +48,11 @@ export default function CourseFormDrawer({
   } = useForm({
     defaultValues: {
       title: "",
+      slug: "",
       subtitle: "",
       shortDescription: "",
       description: "",
+      totalDurationMinutes: "",
       categoryId: "",
       tagIds: [],
     },
@@ -62,9 +64,11 @@ export default function CourseFormDrawer({
     if (open) {
       reset({
         title: initialData?.title || "",
+        slug: initialData?.slug || "",
         subtitle: initialData?.subtitle || "",
         shortDescription: initialData?.shortDescription || "",
         description: initialData?.description || "",
+        totalDurationMinutes: initialData?.totalDurationMinutes ?? "",
         categoryId: initialData?.categoryId || initialData?.category?.id || "",
         tagIds: normalizeTagIds(initialData?.tagIds || initialData?.tags),
       });
@@ -72,8 +76,15 @@ export default function CourseFormDrawer({
   }, [open, initialData, reset]);
 
   const submitHandler = (values) => {
+    const slug = values.slug?.trim();
+    const durationMinutes = String(values.totalDurationMinutes ?? "").trim();
+
     onSubmit({
       title: values.title?.trim(),
+      // Only send the slug when it was actually changed — it is the public URL
+      slug: slug && slug !== initialData?.slug ? slug : undefined,
+      totalDurationMinutes:
+        durationMinutes === "" ? null : Math.round(Number(durationMinutes)),
       subtitle: values.subtitle?.trim() || undefined,
       shortDescription: values.shortDescription?.trim() || undefined,
       description: values.description?.trim() || undefined,
@@ -128,6 +139,35 @@ export default function CourseFormDrawer({
               </div>
 
               <div className="space-y-2 md:col-span-2">
+                <Label>URL slug</Label>
+                <Input
+                  className="h-11 rounded-xl"
+                  placeholder={
+                    mode === "edit"
+                      ? "emirati-arabic-a1"
+                      : "Leave empty to generate from the title"
+                  }
+                  disabled={submitting}
+                  {...register("slug", {
+                    pattern: {
+                      value: /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+                      message: "Use lowercase letters, numbers and hyphens only",
+                    },
+                  })}
+                />
+                {errors.slug && (
+                  <p className="text-xs text-destructive">
+                    {errors.slug.message}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  The slug is created once from the title and does not change
+                  when you rename the course. Edit it here if the URL no longer
+                  matches the title. Changing it breaks old links.
+                </p>
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
                 <Label>Subtitle</Label>
                 <Input
                   className="h-11 rounded-xl"
@@ -155,6 +195,23 @@ export default function CourseFormDrawer({
                   disabled={submitting}
                   {...register("description")}
                 />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <Label>Total duration (minutes)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="1"
+                  className="h-11 rounded-xl"
+                  placeholder="Example: 420 (7 hours)"
+                  disabled={submitting}
+                  {...register("totalDurationMinutes")}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Shown to students on the course page. If empty, it is
+                  calculated from the lecture durations.
+                </p>
               </div>
 
               <div className="space-y-2">
