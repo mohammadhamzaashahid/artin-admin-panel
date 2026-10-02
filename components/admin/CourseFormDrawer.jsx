@@ -52,7 +52,7 @@ export default function CourseFormDrawer({
       subtitle: "",
       shortDescription: "",
       description: "",
-      totalDurationMinutes: "",
+      totalDurationHours: "",
       categoryId: "",
       tagIds: [],
     },
@@ -68,7 +68,9 @@ export default function CourseFormDrawer({
         subtitle: initialData?.subtitle || "",
         shortDescription: initialData?.shortDescription || "",
         description: initialData?.description || "",
-        totalDurationMinutes: initialData?.totalDurationMinutes ?? "",
+        totalDurationHours: initialData?.totalDurationMinutes
+          ? Number((initialData.totalDurationMinutes / 60).toFixed(2))
+          : "",
         categoryId: initialData?.categoryId || initialData?.category?.id || "",
         tagIds: normalizeTagIds(initialData?.tagIds || initialData?.tags),
       });
@@ -77,14 +79,14 @@ export default function CourseFormDrawer({
 
   const submitHandler = (values) => {
     const slug = values.slug?.trim();
-    const durationMinutes = String(values.totalDurationMinutes ?? "").trim();
+    const durationHours = String(values.totalDurationHours ?? "").trim();
 
     onSubmit({
       title: values.title?.trim(),
       // Only send the slug when it was actually changed — it is the public URL
       slug: slug && slug !== initialData?.slug ? slug : undefined,
       totalDurationMinutes:
-        durationMinutes === "" ? null : Math.round(Number(durationMinutes)),
+        durationHours === "" ? null : Math.round(Number(durationHours) * 60),
       subtitle: values.subtitle?.trim() || undefined,
       shortDescription: values.shortDescription?.trim() || undefined,
       description: values.description?.trim() || undefined,
@@ -198,19 +200,20 @@ export default function CourseFormDrawer({
               </div>
 
               <div className="space-y-2 md:col-span-2">
-                <Label>Total duration (minutes)</Label>
+                <Label>Total duration (hours)</Label>
                 <Input
                   type="number"
                   min="0"
-                  step="1"
+                  step="0.25"
                   className="h-11 rounded-xl"
-                  placeholder="Example: 420 (7 hours)"
+                  placeholder="Example: 7 or 7.5"
                   disabled={submitting}
-                  {...register("totalDurationMinutes")}
+                  {...register("totalDurationHours")}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Shown to students on the course page. If empty, it is
-                  calculated from the lecture durations.
+                  Enter hours (decimals allowed, e.g. 7.5). Shown to students on
+                  the course page. If empty, it is calculated from the lecture
+                  durations.
                 </p>
               </div>
 
