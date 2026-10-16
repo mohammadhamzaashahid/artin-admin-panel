@@ -20,10 +20,11 @@ import { useUploadMedia } from "@/lib/hooks/useMedia";
 import { formatBytes } from "@/lib/utils";
 
 const acceptMap = {
-  IMAGE: "image/png,image/jpeg,image/jpg,image/webp",
-  AUDIO: "audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/aac,audio/mp4",
-  VIDEO: "video/mp4,video/webm,video/quicktime",
-  DOCUMENT: "application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,text/plain",
+  // Extensions are listed too: some systems have no MIME type for them
+  IMAGE: "image/png,image/jpeg,image/jpg,image/webp,.png,.jpg,.jpeg,.webp",
+  AUDIO: "audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/aac,audio/mp4,audio/ogg,.mp3,.wav,.aac,.m4a,.ogg",
+  VIDEO: "video/mp4,video/webm,video/quicktime,.mp4,.m4v,.webm,.mov",
+  DOCUMENT: "application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,text/plain,.pdf,.docx,.doc,.txt",
 };
 
 const iconMap = {
@@ -34,13 +35,16 @@ const iconMap = {
 };
 
 function normalizeMimeType(file, mediaKind) {
-  if (file.type) return file.type;
+  if (file.type && file.type !== "application/octet-stream") return file.type;
 
   const name = file.name.toLowerCase();
 
   if (name.endsWith(".mp3")) return "audio/mpeg";
   if (name.endsWith(".wav")) return "audio/wav";
   if (name.endsWith(".aac")) return "audio/aac";
+  if (name.endsWith(".m4a")) return "audio/mp4";
+  if (name.endsWith(".ogg")) return "audio/ogg";
+  if (name.endsWith(".m4v")) return "video/mp4";
   if (name.endsWith(".mp4") && mediaKind === "VIDEO") return "video/mp4";
   if (name.endsWith(".mp4") && mediaKind === "AUDIO") return "audio/mp4";
   if (name.endsWith(".webm")) return "video/webm";
